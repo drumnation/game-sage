@@ -1,0 +1,40 @@
+// @see - https://www.electron.build/configuration/configuration
+{
+  $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  appId: "com.gamesage.app",
+  asar: true,
+  productName: "GameSage",
+  directories: {
+    output: "dist/release",
+  },
+  files: ["dist/**/*", "dist-electron/**/*"],
+  mac: {
+    target: {
+      target: "dmg",
+      arch: ["arm64", "x64"],
+    },
+    artifactName: "${productName}-${version}-${arch}.${ext}",
+    category: "public.app-category.games",
+  },
+  win: {
+    target: [
+      {
+        target: "nsis",
+        arch: ["x64"],
+      },
+    ],
+    artifactName: "${productName}-${version}-${arch}.${ext}",
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    deleteAppDataOnUninstall: false,
+  },
+  linux: {
+    target: ["AppImage"],
+    artifactName: "${productName}-${version}-${arch}.${ext}",
+    category: "Game",
+  },
+  publish: null,
+}
