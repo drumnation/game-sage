@@ -17,6 +17,7 @@ export interface ScreenshotMetadata {
     format: 'jpeg' | 'png' | 'webp';
     isSceneChange?: boolean;
     previousSceneScore?: number;
+    isHotkeyCapture?: boolean;
 }
 
 export interface DisplayInfo {

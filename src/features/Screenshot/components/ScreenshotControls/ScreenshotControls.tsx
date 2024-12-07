@@ -1,25 +1,38 @@
 import React from 'react';
 import { Button } from 'antd';
-import { CameraOutlined, PauseCircleOutlined } from '@ant-design/icons';
-
-export interface ScreenshotControlsProps {
-    isCapturing: boolean;
-    onCapture: () => void;
-}
+import { PlayCircleOutlined, PauseCircleOutlined, CameraOutlined } from '@ant-design/icons';
+import type { ScreenshotControlsProps } from '../../Screenshot.types';
 
 export const ScreenshotControls: React.FC<ScreenshotControlsProps> = ({
+    onCapture,
+    onSingleCapture,
     isCapturing,
-    onCapture
+    isTransitioning = false,
+    isIntervalMode = false
 }) => {
+    if (isIntervalMode) {
+        return (
+            <Button
+                type={isCapturing ? "default" : "default"}
+                danger={isCapturing}
+                icon={isCapturing ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                onClick={onCapture}
+                loading={isTransitioning}
+                disabled={isTransitioning}
+            >
+                {isCapturing ? 'Stop Capture' : 'Start Interval Capture'}
+            </Button>
+        );
+    }
+
     return (
         <Button
-            type={isCapturing ? "default" : "primary"}
-            icon={isCapturing ? <PauseCircleOutlined /> : <CameraOutlined />}
-            onClick={onCapture}
-            danger={isCapturing}
-            size="large"
+            icon={<CameraOutlined />}
+            onClick={onSingleCapture}
+            loading={isTransitioning}
+            disabled={isTransitioning}
         >
-            {isCapturing ? 'Stop Capture' : 'Start Capture'}
+            Capture Now
         </Button>
     );
 };

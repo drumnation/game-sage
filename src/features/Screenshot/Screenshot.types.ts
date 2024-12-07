@@ -1,4 +1,4 @@
-import type { ScreenshotConfig } from '@electron/types/electron-api';
+import type { ScreenshotConfig } from '@electron/types';
 
 /**
  * Screenshot metadata containing capture information
@@ -11,6 +11,7 @@ export interface ScreenshotMetadata {
     height: number;
     isSceneChange?: boolean;
     previousSceneScore?: number;
+    isHotkeyCapture?: boolean;
 }
 
 /**
@@ -50,18 +51,26 @@ export interface ScreenshotProps {
     onSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
     onDisplaysChange: (selectedDisplays: string[]) => void;
     onCapture: () => void;
+    onSingleCapture: () => void;
     isCapturing: boolean;
+    isTransitioning?: boolean;
 }
 
 export interface ScreenshotControlsProps {
     onCapture: () => void;
+    onSingleCapture?: () => void;
     isCapturing: boolean;
+    isTransitioning?: boolean;
+    isIntervalMode?: boolean;
 }
 
 export interface MonitorSelectionProps {
     onDisplaysChange: (selectedDisplays: string[]) => void;
+    isCapturing?: boolean;
 }
 
 export interface ScreenshotSettingsProps {
-    onSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
+    onSettingsChange: (settings: Partial<ScreenshotConfig & { useHotkey?: boolean }>) => void;
+    isCapturing?: boolean;
+    onHotkeyRecordingChange?: (isRecording: boolean) => void;
 } 

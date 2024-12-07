@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
 export const LeftSidebarContainer = styled.aside`
-    width: 300px;
+    width: 400px;
     height: 100vh;
     background-color: ${({ theme }) => theme.colors.surface};
     border-right: 1px solid ${({ theme }) => theme.colors.border};

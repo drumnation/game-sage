@@ -1,108 +1,258 @@
-import React, { useEffect } from 'react';
-import { Form, InputNumber, Select, Switch, Slider } from 'antd';
-import type { ScreenshotConfig } from '@electron/types/electron-api';
+import React, { useEffect, useCallback } from 'react';
+import { Form, Switch, Slider, Input, Button, Modal, Select, Divider } from 'antd';
+import { KeyOutlined, RedoOutlined } from '@ant-design/icons';
+import type { ScreenshotSettingsProps } from '../../Screenshot.types';
+import type { ScreenshotConfig, ImageFormat } from '@electron/types';
+import { useHotkeyManager } from '../../../../store/hooks/useHotkeyManager';
+import { HotkeyInputContainer, HotkeyInput, HotkeyButtonGroup } from './ScreenshotSettings.styles';
 
-interface ScreenshotSettingsProps {
-    onSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
-}
+type FormValues = ScreenshotConfig & { useHotkey: boolean };
+type FormChangedValue = Partial<FormValues>;
+
+const DEFAULT_VALUES: FormValues = {
+    captureInterval: 1000,
+    format: 'jpeg' as ImageFormat,
+    quality: 0.8,
+    detectSceneChanges: false,
+    sceneChangeThreshold: 0.1,
+    useHotkey: false,
+};
+
+const DEFAULT_HOTKEY = 'CommandOrControl+Shift+C';
 
 export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
-    onSettingsChange
+    isCapturing,
+    onSettingsChange,
+    onHotkeyRecordingChange
 }) => {
-    const [form] = Form.useForm<ScreenshotConfig>();
+    const [form] = Form.useForm<FormValues>();
+    const {
+        captureHotkey,
+        isRecordingHotkey,
+        pressedKeys,
+        startRecording,
+        stopRecording,
+        updateHotkey
+    } = useHotkeyManager();
 
+    // Notify parent of recording state changes
     useEffect(() => {
-        // Load initial config
-        window.electronAPI?.getConfig().then(response => {
+        onHotkeyRecordingChange?.(isRecordingHotkey);
+    }, [isRecordingHotkey, onHotkeyRecordingChange]);
+
+    // Load initial config and settings from storage
+    useEffect(() => {
+        const api = window.electronAPI;
+        if (!api) return;
+
+        // Load config
+        api.getConfig().then(response => {
             if (response.success && response.data) {
-                form.setFieldsValue(response.data);
+                const config = response.data;
+                form.setFieldsValue({
+                    ...config,
+                    useHotkey: localStorage.getItem('useHotkey') === 'true' // Load from localStorage
+                });
+                onSettingsChange?.({
+                    ...config,
+                    useHotkey: localStorage.getItem('useHotkey') === 'true'
+                });
             }
         });
-    }, [form]);
 
-    const handleValuesChange = (_changedValues: Partial<ScreenshotConfig>, allValues: ScreenshotConfig) => {
-        onSettingsChange(allValues);
-    };
+        // Load hotkey
+        const savedHotkey = localStorage.getItem('captureHotkey');
+        if (savedHotkey) {
+            updateHotkey(savedHotkey);
+        }
+    }, [form, onSettingsChange, updateHotkey]);
+
+    const handleValuesChange = useCallback((changedValues: FormChangedValue, allValues: FormValues) => {
+        if (isCapturing) return;
+
+        // Handle hotkey mode change
+        if ('useHotkey' in changedValues) {
+            // Save to localStorage
+            localStorage.setItem('useHotkey', String(changedValues.useHotkey));
+
+            // Reset scene detection when switching to hotkey mode
+            if (changedValues.useHotkey) {
+                form.setFieldsValue({
+                    detectSceneChanges: false,
+                    sceneChangeThreshold: DEFAULT_VALUES.sceneChangeThreshold
+                });
+            }
+        }
+
+        // Notify parent of changes
+        onSettingsChange?.(allValues);
+    }, [form, isCapturing, onSettingsChange]);
+
+    const handleResetHotkey = useCallback(() => {
+        updateHotkey(DEFAULT_HOTKEY);
+        localStorage.setItem('captureHotkey', DEFAULT_HOTKEY);
+    }, [updateHotkey]);
 
     return (
         <Form
             form={form}
             layout="vertical"
+            initialValues={DEFAULT_VALUES}
             onValuesChange={handleValuesChange}
-            initialValues={{
-                captureInterval: 1000,
-                format: 'jpeg',
-                quality: 80,
-                detectSceneChanges: false,
-                sceneChangeThreshold: 0.1
-            }}
+            disabled={isCapturing}
         >
             <Form.Item
-                label="Capture Interval (ms)"
-                name="captureInterval"
-                tooltip="Time between captures in milliseconds"
+                name="useHotkey"
+                label="Capture Mode"
+                valuePropName="checked"
             >
-                <InputNumber min={100} max={10000} style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-                label="Image Format"
-                name="format"
-                tooltip="Format to save screenshots in"
-            >
-                <Select>
-                    <Select.Option value="jpeg">JPEG</Select.Option>
-                    <Select.Option value="png">PNG</Select.Option>
-                    <Select.Option value="webp">WebP</Select.Option>
-                </Select>
-            </Form.Item>
-
-            <Form.Item
-                label="Image Quality"
-                name="quality"
-                tooltip="Higher quality means larger file size"
-            >
-                <Slider
-                    min={1}
-                    max={100}
-                    marks={{
-                        1: 'Low',
-                        50: 'Medium',
-                        100: 'High'
-                    }}
+                <Switch
+                    checkedChildren="Hotkey"
+                    unCheckedChildren="Interval"
                 />
             </Form.Item>
 
             <Form.Item
-                label="Scene Change Detection"
-                name="detectSceneChanges"
-                valuePropName="checked"
-                tooltip="Only process frames when significant changes are detected"
+                noStyle
+                shouldUpdate={(prev, curr) => prev.useHotkey !== curr.useHotkey}
             >
-                <Switch />
+                {({ getFieldValue }) => {
+                    const useHotkey = getFieldValue('useHotkey');
+
+                    return useHotkey ? (
+                        <Form.Item label="Capture Hotkey">
+                            <HotkeyInputContainer>
+                                <HotkeyInput>
+                                    <Input
+                                        value={captureHotkey}
+                                        readOnly
+                                        prefix={<KeyOutlined />}
+                                        style={{ width: '100%' }}
+                                    />
+                                </HotkeyInput>
+                                <HotkeyButtonGroup>
+                                    <Button
+                                        onClick={startRecording}
+                                        icon={<KeyOutlined />}
+                                        type="primary"
+                                    >
+                                        Record Hotkey
+                                    </Button>
+                                    <Button
+                                        onClick={handleResetHotkey}
+                                        icon={<RedoOutlined />}
+                                    >
+                                        Reset to Default
+                                    </Button>
+                                </HotkeyButtonGroup>
+                            </HotkeyInputContainer>
+                        </Form.Item>
+                    ) : (
+                        <>
+                            <Form.Item
+                                name="captureInterval"
+                                label="Capture Interval (ms)"
+                            >
+                                <Slider
+                                    min={100}
+                                    max={10000}
+                                    step={100}
+                                    marks={{
+                                        100: '100ms',
+                                        1000: '1s',
+                                        5000: '5s',
+                                        10000: '10s'
+                                    }}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="detectSceneChanges"
+                                label="Scene Change Detection"
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </Form.Item>
+
+                            <Form.Item
+                                noStyle
+                                shouldUpdate={(prev, curr) => prev.detectSceneChanges !== curr.detectSceneChanges}
+                            >
+                                {({ getFieldValue }) => {
+                                    const detectSceneChanges = getFieldValue('detectSceneChanges');
+
+                                    return detectSceneChanges && (
+                                        <Form.Item
+                                            name="sceneChangeThreshold"
+                                            label="Scene Change Threshold"
+                                        >
+                                            <Slider
+                                                min={0.01}
+                                                max={1}
+                                                step={0.01}
+                                                marks={{
+                                                    0.01: 'Low',
+                                                    0.1: 'Med',
+                                                    0.5: 'High'
+                                                }}
+                                            />
+                                        </Form.Item>
+                                    );
+                                }}
+                            </Form.Item>
+                        </>
+                    );
+                }}
             </Form.Item>
 
-            <Form.Item noStyle dependencies={['detectSceneChanges']}>
-                {({ getFieldValue }) => (
-                    <Form.Item
-                        label="Scene Change Threshold"
-                        name="sceneChangeThreshold"
-                        tooltip="Higher values mean more significant changes are needed"
-                    >
-                        <Slider
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            marks={{
-                                0: 'Low',
-                                0.5: 'Medium',
-                                1: 'High'
-                            }}
-                            disabled={!getFieldValue('detectSceneChanges')}
-                        />
-                    </Form.Item>
-                )}
+            <Divider />
+
+            <Form.Item name="format" label="Image Format">
+                <Select>
+                    <Select.Option value="jpeg">JPEG</Select.Option>
+                    <Select.Option value="png">PNG</Select.Option>
+                </Select>
             </Form.Item>
+
+            <Form.Item
+                noStyle
+                shouldUpdate={(prev, curr) => prev.format !== curr.format}
+            >
+                {({ getFieldValue }) => {
+                    const format = getFieldValue('format');
+
+                    return format === 'jpeg' && (
+                        <Form.Item name="quality" label="JPEG Quality">
+                            <Slider
+                                min={0.1}
+                                max={1}
+                                step={0.1}
+                                marks={{
+                                    0.1: 'Low',
+                                    0.5: 'Med',
+                                    1: 'High'
+                                }}
+                            />
+                        </Form.Item>
+                    );
+                }}
+            </Form.Item>
+
+            <Modal
+                open={isRecordingHotkey}
+                onCancel={stopRecording}
+                footer={null}
+                closable={false}
+                maskClosable={false}
+                keyboard={false}
+                destroyOnClose
+            >
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <h3>Press your desired hotkey combination</h3>
+                    <p>{pressedKeys.join(' + ') || 'Waiting for input...'}</p>
+                    <p style={{ color: '#888' }}>Press Esc to cancel</p>
+                </div>
+            </Modal>
         </Form>
     );
 }; 

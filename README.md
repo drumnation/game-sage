@@ -7,6 +7,9 @@ Your AI-powered gaming strategist, commentator, and companion.
 ### Real-time Game Analysis
 
 - Automatic screenshot capture and analysis
+- Configurable screenshot settings with custom intervals and formats
+- Global hotkey support for instant captures
+- Multi-monitor support with selective capture
 - Powered by OpenAI's GPT-4o-mini Vision API
 - Multiple analysis modes:
   - Tactical Analysis: Get real-time strategic advice

@@ -5,7 +5,10 @@ import type { DisplayInfo, APIResponse } from '@electron/types/electron-api';
 
 const { Option } = Select;
 
-export const MonitorSelection: React.FC<MonitorSelectionProps> = ({ onDisplaysChange }) => {
+export const MonitorSelection: React.FC<MonitorSelectionProps> = ({
+    onDisplaysChange,
+    isCapturing = false
+}) => {
     const [displays, setDisplays] = useState<DisplayInfo[]>([]);
     const [selectedDisplays, setSelectedDisplays] = useState<string[]>([]);
 
@@ -25,11 +28,20 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({ onDisplaysCh
                 console.log('Available displays:', response.data); // Debug log
                 setDisplays(response.data);
 
-                // Select primary display by default only if no display is currently selected
-                if (selectedDisplays.length === 0) {
+                // Get current config to check active displays
+                const configResponse = await api.getConfig();
+                const currentActiveDisplays = configResponse.success && configResponse.data?.activeDisplays;
+
+                // If we have active displays in config, use those
+                if (currentActiveDisplays && currentActiveDisplays.length > 0) {
+                    console.log('Using active displays from config:', currentActiveDisplays);
+                    setSelectedDisplays(currentActiveDisplays);
+                    onDisplaysChange(currentActiveDisplays);
+                } else {
+                    // Otherwise select primary display by default
                     const primaryDisplay = response.data.find((d: DisplayInfo) => d.isPrimary);
                     if (primaryDisplay) {
-                        console.log('Selecting primary display:', primaryDisplay); // Debug log
+                        console.log('Selecting primary display:', primaryDisplay);
                         const newSelection = [primaryDisplay.id];
                         setSelectedDisplays(newSelection);
                         onDisplaysChange(newSelection);
@@ -43,15 +55,16 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({ onDisplaysCh
             console.error('Failed to load displays:', error);
             setDisplays([]);
         }
-    }, [selectedDisplays.length, onDisplaysChange]);
+    }, [onDisplaysChange]);
 
     useEffect(() => {
         loadDisplays();
-        // This is a workaround to prevent infinite re-renders
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [loadDisplays]);
 
     const handleDisplayChange = (newSelection: string[]) => {
+        if (isCapturing) {
+            return; // Prevent changes while capturing
+        }
         console.log('Display selection changed:', newSelection); // Debug log
         setSelectedDisplays(newSelection);
         onDisplaysChange(newSelection);
@@ -64,6 +77,7 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({ onDisplaysCh
             placeholder="Select displays"
             value={selectedDisplays}
             onChange={handleDisplayChange}
+            disabled={isCapturing}
         >
             {displays.map(display => (
                 <Option key={display.id} value={display.id}>

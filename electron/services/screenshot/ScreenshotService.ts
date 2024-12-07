@@ -17,12 +17,14 @@ export class ScreenshotService extends EventEmitter {
     private captureInterval: NodeJS.Timeout | null;
     private lastFrames: Map<string, Buffer>;
     private storage: StorageService;
+    private frameCount: number = 0;
 
     constructor() {
         super();
         this.config = { ...DEFAULT_CONFIG };
         this.captureInterval = null;
         this.lastFrames = new Map();
+        this.frameCount = 0;
 
         const storageConfig: StorageConfig = {
             basePath: 'screenshots',
@@ -59,7 +61,9 @@ export class ScreenshotService extends EventEmitter {
 
     public async getDisplays(): Promise<DisplayInfo[]> {
         const displays = screen.getAllDisplays();
-        return displays.map(display => ({
+        console.log('Raw Electron displays:', displays.map(d => ({ id: d.id, label: d.label, bounds: d.bounds })));
+
+        const mappedDisplays = displays.map(display => ({
             id: display.id.toString(),
             name: display.label || `Display ${display.id}`,
             bounds: {
@@ -70,12 +74,25 @@ export class ScreenshotService extends EventEmitter {
             },
             isPrimary: display.id === screen.getPrimaryDisplay().id,
         }));
+
+        console.log('Mapped displays:', mappedDisplays);
+        return mappedDisplays;
     }
 
     public async updateConfig(config: Partial<ScreenshotConfig>): Promise<void> {
         try {
+            const previousDisplays = this.config.activeDisplays;
             this.config = { ...this.config, ...config };
             await this.storage.saveConfig('screenshot', this.config);
+
+            // If active displays changed and we're currently capturing, restart the capture
+            if (config.activeDisplays &&
+                JSON.stringify(previousDisplays) !== JSON.stringify(config.activeDisplays) &&
+                this.isCapturing()) {
+                console.log('Display selection changed, restarting capture service...');
+                await this.stop();
+                await this.start();
+            }
         } catch (error) {
             console.error('Failed to update config:', error);
             throw error;
@@ -101,9 +118,10 @@ export class ScreenshotService extends EventEmitter {
         }
 
         try {
-            console.log('Performing initial capture...');
-            await this.capture();
+            // Ensure we're not capturing before starting
+            await this.stop();
 
+            // Start the interval immediately
             this.captureInterval = setInterval(() => {
                 console.log(`[${new Date().toISOString()}] Starting scheduled capture...`);
                 this.capture().catch(error => {
@@ -111,6 +129,13 @@ export class ScreenshotService extends EventEmitter {
                     this.emit('error', error);
                 });
             }, this.config.captureInterval);
+
+            // Trigger an immediate capture in parallel
+            console.log('Triggering immediate capture...');
+            this.capture().catch(error => {
+                console.error('Error during immediate capture:', error);
+                this.emit('error', error);
+            });
 
             console.log(`Screenshot service started with interval: ${this.config.captureInterval}ms`);
         } catch (error) {
@@ -138,7 +163,30 @@ export class ScreenshotService extends EventEmitter {
     }
 
     public async captureNow(): Promise<CaptureResult[]> {
-        return this.capture();
+        try {
+            const displays = await this.getDisplays();
+            const activeDisplays = this.config.activeDisplays || [displays[0].id];
+            console.log(`[Frame Event] Starting capture. Current frame count: ${this.frameCount}`);
+
+            const results: CaptureResult[] = [];
+
+            for (const display of displays) {
+                if (activeDisplays.includes(display.id)) {
+                    const result = await this.captureDisplay(display);
+                    if (result) {
+                        results.push(result);
+                        this.frameCount++;
+                        console.log(`[Frame Event] Captured frame ${this.frameCount} for display: ${display.id}`);
+                    }
+                }
+            }
+
+            return results;
+        } catch (error) {
+            console.error('Failed to capture:', error);
+            this.emit('error', error);
+            throw error;
+        }
     }
 
     private async capture(): Promise<CaptureResult[]> {
@@ -151,13 +199,17 @@ export class ScreenshotService extends EventEmitter {
 
             for (const display of displays) {
                 if (activeDisplays.includes(display.id)) {
-                    console.log(`Capturing display: ${display.id} (${display.name})`);
+                    console.log(`Attempting to capture display:`, {
+                        id: display.id,
+                        name: display.name,
+                        bounds: display.bounds,
+                        isPrimary: display.isPrimary
+                    });
+
                     const result = await this.captureDisplay(display);
                     if (result) {
                         results.push(result);
-                        // Emit each frame individually
-                        this.emit('frame', result);
-                        console.log(`Successfully captured and emitted frame for display: ${display.id}`);
+                        console.log(`Successfully captured frame for display: ${display.id}`);
                     }
                 }
             }
@@ -172,14 +224,13 @@ export class ScreenshotService extends EventEmitter {
 
     private async captureDisplay(display: DisplayInfo): Promise<CaptureResult | null> {
         try {
+            // Convert display.id to number for screenshot-desktop
             const displayId = parseInt(display.id);
             if (isNaN(displayId)) {
                 throw new Error(`Invalid display ID: ${display.id}`);
             }
 
-            console.log(`Attempting to capture display ${displayId}...`);
-            const buffer = await screenshot({ screen: displayId });
-            console.log(`Raw capture successful for display ${displayId}`);
+            const buffer = await screenshot({ screen: displayId - 1 }); // screenshot-desktop uses 0-based index
 
             const metadata: ScreenshotMetadata = {
                 timestamp: Date.now(),
@@ -190,7 +241,6 @@ export class ScreenshotService extends EventEmitter {
             };
 
             const processedBuffer = await this.processImage(buffer);
-            console.log(`Image processing completed for display ${displayId}`);
 
             if (this.config.detectSceneChanges && this.config.sceneChangeThreshold) {
                 const lastFrame = this.lastFrames.get(display.id);
@@ -256,5 +306,10 @@ export class ScreenshotService extends EventEmitter {
             console.error('Failed to calculate scene change:', error);
             throw error;
         }
+    }
+
+    public resetFrameCount(): void {
+        this.frameCount = 0;
+        console.log('[Frame Event] Frame count reset to 0');
     }
 } 

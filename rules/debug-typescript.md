@@ -6,3 +6,4 @@
 - Be intensely aware of what code already exists, do your research, and make sure you do not duplicate already existing code.
 - Be extremely careful not to remove working code in your quest to solve typescript errors. The codebase is complex and much is already working.
 - If your changes produce new errors, pay close attention to what you did, and opt to roll back to the previously working state before trying again rather than continously spin out new code.
+- Check against the working commit state to see how things were previously implemented to ensure that the error isn't a regression, use the previous state to fix the error.

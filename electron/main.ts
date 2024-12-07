@@ -2,25 +2,14 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { ScreenshotService } from './services/screenshot/ScreenshotService'
 import { HotkeyService } from './services/hotkey/HotkeyService'
-import type { CaptureFrame } from './types/electron-api'
 import type { ScreenshotConfig } from './services/screenshot/types'
 import type { HotkeyConfig } from './services/hotkey/types'
+import type { DisplayInfo, CaptureResult } from './types/electron-api'
 
-interface MessagePayload {
+interface APIResponse<T = void> {
   success: boolean;
-  data?: {
-    frames?: Array<{
-      buffer: Buffer;
-      metadata: {
-        timestamp: number;
-        format: 'jpeg' | 'png' | 'webp';
-        width: number;
-        height: number;
-        isSceneChange?: boolean;
-      };
-    }>;
-  };
   error?: string;
+  data?: T;
 }
 
 const DIST_PATH = join(__dirname, '../dist')
@@ -30,14 +19,14 @@ let screenshotService: ScreenshotService | null = null
 let hotkeyService: HotkeyService | null = null
 
 const WINDOW_WIDTH = 1200
-const WINDOW_HEIGHT = 800
+const WINDOW_HEIGHT = 900
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
     minWidth: 800,
-    minHeight: 600,
+    minHeight: 800,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -80,15 +69,6 @@ function createWindow() {
 function setupScreenshotService() {
   screenshotService = new ScreenshotService();
 
-  screenshotService.on('frame', (result) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('capture-frame', {
-        imageData: result.buffer.toString('base64'),
-        metadata: result.metadata,
-      });
-    }
-  });
-
   screenshotService.on('error', (error: Error) => {
     if (mainWindow) {
       mainWindow.webContents.send('main-process-message', {
@@ -101,79 +81,81 @@ function setupScreenshotService() {
   ipcMain.handle('start-capture', async () => {
     try {
       await screenshotService?.start();
-      return { success: true };
+      return { success: true } as APIResponse;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage } as APIResponse;
     }
   });
 
   ipcMain.handle('stop-capture', async () => {
     try {
       await screenshotService?.stop();
-      return { success: true };
+      return { success: true } as APIResponse;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage } as APIResponse;
     }
   });
 
   ipcMain.handle('capture-now', async () => {
     try {
       const results = await screenshotService?.captureNow();
-      const response: MessagePayload = {
-        success: true,
-        data: {
-          frames: results?.filter((result): result is CaptureFrame =>
-            'buffer' in result && 'metadata' in result
-          ).map(result => ({
-            buffer: result.buffer,
-            metadata: {
-              timestamp: result.metadata.timestamp,
-              format: result.metadata.format,
-              width: result.metadata.width,
-              height: result.metadata.height,
-              isSceneChange: result.metadata.isSceneChange
-            }
-          }))
+      if (!results || results.length === 0) {
+        return { success: false, error: 'No frames captured' } as APIResponse;
+      }
+
+      // Send all frames to renderer, but only mark the first one as hotkey capture
+      results.forEach((result, index) => {
+        if (!('buffer' in result && 'metadata' in result)) {
+          return;
         }
-      };
-      return response;
+
+        // Only mark the first frame as a hotkey capture
+        if (index === 0) {
+          result.metadata.isHotkeyCapture = true;
+        }
+
+        // Send frame event
+        sendFrameToRenderer(result);
+      });
+
+      return { success: true } as APIResponse;
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      } as MessagePayload;
+      } as APIResponse;
     }
   });
 
   ipcMain.handle('update-screenshot-config', async (_event, config: Partial<ScreenshotConfig>) => {
     try {
       await screenshotService?.updateConfig(config);
-      return { success: true };
+      return { success: true } as APIResponse;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage } as APIResponse;
     }
   });
 
   ipcMain.handle('get-screenshot-config', async () => {
     try {
       const config = screenshotService?.getConfig();
-      return { success: true, data: config };
+      return { success: true, data: config } as APIResponse<ScreenshotConfig>;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage } as APIResponse;
     }
   });
 
   ipcMain.handle('list-displays', async () => {
     try {
       const displays = await screenshotService?.getDisplays();
-      return { success: true, data: displays || [] };
+      return { success: true, data: displays || [] } as APIResponse<DisplayInfo[]>;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage } as APIResponse;
     }
   });
 }
@@ -186,17 +168,10 @@ function setupHotkeyService() {
     hotkeyService.registerHotkey('captureNow', 'CommandOrControl+Shift+C', async () => {
       try {
         if (!screenshotService) return;
-        const results = await screenshotService.captureNow();
-        if (mainWindow && results) {
-          results.forEach(result => {
-            if ('buffer' in result && 'metadata' in result) {
-              mainWindow?.webContents.send('capture-frame', {
-                imageData: result.buffer.toString('base64'),
-                metadata: result.metadata,
-              });
-            }
-          });
-        }
+
+        // Only notify UI that hotkey was pressed
+        // The UI will handle the capture
+        mainWindow?.webContents.send('capture-hotkey');
       } catch (error) {
         console.error('Hotkey capture failed:', error);
       }
@@ -266,3 +241,14 @@ app.on('before-quit', () => {
 });
 
 ipcMain.handle('ping', () => 'pong');
+
+// Function to handle sending frame to renderer
+function sendFrameToRenderer(result: CaptureResult) {
+  if (mainWindow && 'buffer' in result && 'metadata' in result) {
+    console.log('[Frame Event] Sending frame to renderer');
+    mainWindow.webContents.send('capture-frame', {
+      imageData: result.buffer.toString('base64'),
+      metadata: result.metadata,
+    });
+  }
+}

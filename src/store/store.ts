@@ -3,6 +3,7 @@ import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import appReducer from './appSlice';
 import aiReducer from './slices/aiSlice';
+import hotkeyReducer from './slices/hotkeySlice';
 import type { RootState } from './types';
 import { useDispatch, useSelector } from 'react-redux';
 import type { TypedUseSelectorHook } from 'react-redux';
@@ -16,6 +17,7 @@ const aiPersistConfig = {
 const rootReducer = combineReducers({
   app: appReducer,
   ai: persistReducer(aiPersistConfig, aiReducer),
+  hotkey: hotkeyReducer,
 });
 
 export const store = configureStore({

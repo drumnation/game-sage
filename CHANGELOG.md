@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.3] - 2024-03-07
+
+### Added
+
+- New screenshot settings UI component
+- Hotkey management system
+- Global hotkey hooks and store integration
+
+### Changed
+
+- Enhanced screenshot service with improved type safety
+- Updated electron main and preload scripts for better type definitions
+- Improved monitor selection component
+- Enhanced screenshot controls with new settings integration
+
+### Fixed
+
+- Type definitions in electron API
+- Screenshot capture workflow
+- Left sidebar styling improvements
+
 ## [0.3.2] - 2024-03-07
 
 ### Fixed

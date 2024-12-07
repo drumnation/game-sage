@@ -63,4 +63,6 @@ export interface ElectronAPI {
     listDisplays(): Promise<APIResponse<DisplayInfo[]>>;
     startCapture(): Promise<APIResponse<void>>;
     stopCapture(): Promise<APIResponse<void>>;
+    updateHotkey(action: string, accelerator: string): Promise<APIResponse<void>>;
+    getHotkeys(): Promise<APIResponse<{ [key: string]: string }>>;
 } 

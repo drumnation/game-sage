@@ -8,9 +8,11 @@ export interface GameEvent {
     data: unknown;
 }
 
+export type ImageFormat = 'jpeg' | 'png' | 'webp';
+
 export interface ScreenshotConfig {
     captureInterval: number;
-    format: string;
+    format: ImageFormat;
     quality: number;
     detectSceneChanges: boolean;
     sceneChangeThreshold: number;
@@ -49,6 +51,7 @@ export interface CaptureFrame {
         height: number;
         format: string;
         isSceneChange?: boolean;
+        isHotkeyCapture?: boolean;
     };
 }
 
@@ -59,9 +62,12 @@ export interface CaptureError {
 export interface ElectronAPI {
     on(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
     off(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
-    updateConfig(config: Partial<ScreenshotConfig>): Promise<void>;
-    getConfig(): Promise<ScreenshotConfig>;
-    captureNow(): Promise<CaptureResult[]>;
+    updateConfig(config: Partial<ScreenshotConfig>): Promise<APIResponse<void>>;
+    getConfig(): Promise<APIResponse<ScreenshotConfig>>;
+    captureNow(): Promise<APIResponse<CaptureResult[]>>;
+    getHotkeys(): Promise<APIResponse<{ [key: string]: string }>>;
+    updateHotkey(action: string, accelerator: string): Promise<APIResponse<void>>;
+    listDisplays(): Promise<APIResponse<DisplayInfo[]>>;
 }
 
 export interface MessagePayload {

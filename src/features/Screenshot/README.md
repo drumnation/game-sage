@@ -1,61 +1,48 @@
 # Screenshot Feature
 
-A comprehensive screenshot management feature that allows capturing, viewing, and managing screenshots.
+The Screenshot feature provides functionality for capturing and managing screenshots within the application.
 
 ## Components
 
-### Screenshot (Root)
+### ScreenshotSettings
 
-The main component that composes all screenshot functionality together.
+New component that provides a UI for configuring screenshot capture settings including:
 
-#### Props
+- Capture intervals
+- Output format
+- Hotkey bindings
+- Monitor selection preferences
 
-- `screenshots`: Array of captured screenshots
-- `selectedId`: ID of the currently selected screenshot
-- `onCapture`: Callback for capturing new screenshots
-- `onSelect`: Callback for selecting a screenshot
-- `onError`: Optional error handling callback
+### MonitorSelection
 
-### Subcomponents
+Enhanced component for selecting which monitor to capture from, with improved UI and type safety.
 
-- **ScreenshotManager**: Handles screenshot capture and error states
-- **ScreenshotGrid**: Displays captured screenshots in a grid layout
-- **ScreenshotPreview**: Displays individual screenshots with metadata
+### ScreenshotControls
 
-## Usage
+Updated controls component with integration to the new settings system.
 
-```tsx
-import { Screenshot } from '@features/Screenshot';
+## Hooks
 
-function App() {
-    return (
-        <Screenshot
-            screenshots={screenshots}
-            selectedId={selectedId}
-            onCapture={handleCapture}
-            onSelect={handleSelect}
-            onError={handleError}
-        />
-    );
-}
-```
+### useScreenshotCapture
 
-## Theme Usage
+Custom hook for managing the screenshot capture process, now with improved error handling and type safety.
 
-The component uses the following theme tokens:
+### useHotkeyManager
 
-- `colors.background`: Container background
-- `spacing.md`: Container padding and gap
-- `borderRadius`: Container border radius
+New hook for managing global hotkeys related to screenshot capture.
 
-## Accessibility
+## State Management
 
-- All interactive elements are keyboard accessible
-- Error states are properly announced to screen readers
-- Loading states provide appropriate ARIA feedback
+The feature uses Redux for state management with the following slices:
 
-## Dependencies
+- Screenshot settings state
+- Hotkey configurations
+- Capture history
 
-- React
-- styled-components
-- Electron IPC for screenshot capture
+## Electron Integration
+
+Communicates with the electron backend through:
+
+- ScreenshotService for capture functionality
+- HotkeyManager for global shortcuts
+- Typed IPC communication channels

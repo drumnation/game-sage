@@ -13,6 +13,7 @@ export const MainApp: React.FC<MainAppProps> = ({ onError }) => {
         handleDisplaysChange,
         handleSettingsChange,
         handleCapture,
+        handleSingleCapture,
         setCurrentIndex,
     } = useScreenshotCapture();
 
@@ -50,6 +51,7 @@ export const MainApp: React.FC<MainAppProps> = ({ onError }) => {
                 onSettingsChange={handleSettingsChange}
                 onDisplaysChange={handleDisplaysChange}
                 onCapture={handleCapture}
+                onSingleCapture={handleSingleCapture}
                 isCapturing={isCapturing}
             />
             <CenterPanel

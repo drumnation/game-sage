@@ -1,4 +1,4 @@
-import type { ElectronAPI } from '@electron/types/electron-api';
+import type { ElectronAPI } from '../../../electron/types/electron-api';
 
 export const mockElectronAPI: ElectronAPI = {
     on: jest.fn(),
@@ -11,4 +11,6 @@ export const mockElectronAPI: ElectronAPI = {
     listDisplays: jest.fn().mockResolvedValue({ success: true, data: [] }),
     startCapture: jest.fn().mockResolvedValue({ success: true }),
     stopCapture: jest.fn().mockResolvedValue({ success: true }),
+    updateHotkey: jest.fn().mockResolvedValue({ success: true }),
+    getHotkeys: jest.fn().mockResolvedValue({ success: true, data: { captureNow: 'CommandOrControl+Shift+C' } }),
 }; 

@@ -8,8 +8,9 @@ import { LeftSidebarContainer } from './LeftSidebar.styles';
 
 interface LeftSidebarProps {
     onSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
-    onDisplaysChange: (displays: string[]) => void;
+    onDisplaysChange: (selectedDisplays: string[]) => void;
     onCapture: () => void;
+    onSingleCapture: () => void;
     isCapturing: boolean;
 }
 
@@ -17,6 +18,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     onSettingsChange,
     onDisplaysChange,
     onCapture,
+    onSingleCapture,
     isCapturing,
 }) => {
     const { activeTab, tabItems, handleTabChange } = useLeftSidebar();
@@ -30,6 +32,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     onSettingsChange={onSettingsChange}
                     onDisplaysChange={onDisplaysChange}
                     onCapture={onCapture}
+                    onSingleCapture={onSingleCapture}
                     isCapturing={isCapturing}
                 />
             ),
