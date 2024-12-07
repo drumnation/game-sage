@@ -1,5 +1,5 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 import { ScreenshotManager } from '../../features/Screenshot/components/ScreenshotManager';
 import { theme } from '../../styles/theme';
@@ -16,8 +16,6 @@ describe('ScreenshotManager', () => {
     beforeEach(() => {
         jest.clearAllMocks();
     });
-
-    const waitForNextTick = () => new Promise(resolve => setTimeout(resolve, 0));
 
     const getCaptureButton = () => screen.getByRole('button', { name: /capture screenshot/i });
 
@@ -36,20 +34,18 @@ describe('ScreenshotManager', () => {
         const button = getCaptureButton();
 
         // Initial state
-        expect(button).not.toHaveAttribute('data-loading');
+        expect(button).toHaveAttribute('data-loading', 'false');
 
-        await act(async () => {
-            fireEvent.click(button);
-            await waitForNextTick();
-            // Assert loading state is shown immediately
+        // Click and check loading state
+        fireEvent.click(button);
+        await waitFor(() => {
             expect(button).toHaveAttribute('data-loading', 'true');
-
-            // Wait for capture to complete
-            await new Promise(resolve => setTimeout(resolve, 150));
-
-            // Assert loading state is removed
-            expect(button).not.toHaveAttribute('data-loading');
         });
+
+        // Wait for capture to complete
+        await waitFor(() => {
+            expect(button).toHaveAttribute('data-loading', 'false');
+        }, { timeout: 200 });
     });
 
     it('should handle and display capture errors', async () => {
@@ -66,14 +62,11 @@ describe('ScreenshotManager', () => {
             />
         );
 
-        await act(async () => {
-            fireEvent.click(getCaptureButton());
-            await waitForNextTick();
+        fireEvent.click(getCaptureButton());
+        await waitFor(() => {
+            expect(onError).toHaveBeenCalledWith(error);
+            expect(screen.getByText(error.message)).toBeInTheDocument();
         });
-
-        // Assert
-        expect(onError).toHaveBeenCalledWith(error);
-        expect(screen.getByText(error.message)).toBeInTheDocument();
     });
 
     it('should disable interactions while capturing', async () => {
@@ -90,20 +83,18 @@ describe('ScreenshotManager', () => {
 
         const button = getCaptureButton();
 
-        await act(async () => {
-            fireEvent.click(button);
-            await waitForNextTick();
-            // Assert button is disabled during capture
+        // Click and check disabled state
+        fireEvent.click(button);
+        await waitFor(() => {
             expect(button).toHaveAttribute('data-loading', 'true');
             expect(button).toBeDisabled();
-
-            // Wait for capture to complete
-            await new Promise(resolve => setTimeout(resolve, 150));
-
-            // Assert button is enabled after capture
-            expect(button).not.toHaveAttribute('data-loading');
-            expect(button).not.toBeDisabled();
         });
+
+        // Wait for capture to complete
+        await waitFor(() => {
+            expect(button).toHaveAttribute('data-loading', 'false');
+            expect(button).not.toBeDisabled();
+        }, { timeout: 200 });
     });
 
     it('should call onCapture when capture button is clicked', async () => {
@@ -118,13 +109,10 @@ describe('ScreenshotManager', () => {
             />
         );
 
-        await act(async () => {
-            fireEvent.click(getCaptureButton());
-            await waitForNextTick();
+        fireEvent.click(getCaptureButton());
+        await waitFor(() => {
+            expect(onCapture).toHaveBeenCalled();
         });
-
-        // Assert
-        expect(onCapture).toHaveBeenCalled();
     });
 
     describe('Accessibility', () => {
@@ -170,22 +158,16 @@ describe('ScreenshotManager', () => {
             );
 
             // Trigger first error
-            await act(async () => {
-                fireEvent.click(getCaptureButton());
-                await waitForNextTick();
+            fireEvent.click(getCaptureButton());
+            await waitFor(() => {
+                expect(screen.getByText(firstError.message)).toBeInTheDocument();
             });
-
-            // Assert error is shown
-            expect(screen.getByText(firstError.message)).toBeInTheDocument();
 
             // Start new capture
-            await act(async () => {
-                fireEvent.click(getCaptureButton());
-                await waitForNextTick();
+            fireEvent.click(getCaptureButton());
+            await waitFor(() => {
+                expect(screen.queryByText(firstError.message)).not.toBeInTheDocument();
             });
-
-            // Assert error is cleared
-            expect(screen.queryByText(firstError.message)).not.toBeInTheDocument();
         });
 
         it('should handle multiple errors in sequence', async () => {
@@ -206,22 +188,18 @@ describe('ScreenshotManager', () => {
             );
 
             // First error
-            await act(async () => {
-                fireEvent.click(getCaptureButton());
-                await waitForNextTick();
+            fireEvent.click(getCaptureButton());
+            await waitFor(() => {
+                expect(onError).toHaveBeenCalledWith(error1);
+                expect(screen.getByText(error1.message)).toBeInTheDocument();
             });
-
-            expect(onError).toHaveBeenCalledWith(error1);
-            expect(screen.getByText(error1.message)).toBeInTheDocument();
 
             // Second error
-            await act(async () => {
-                fireEvent.click(getCaptureButton());
-                await waitForNextTick();
+            fireEvent.click(getCaptureButton());
+            await waitFor(() => {
+                expect(onError).toHaveBeenCalledWith(error2);
+                expect(screen.getByText(error2.message)).toBeInTheDocument();
             });
-
-            expect(onError).toHaveBeenCalledWith(error2);
-            expect(screen.getByText(error2.message)).toBeInTheDocument();
         });
     });
 
@@ -240,21 +218,23 @@ describe('ScreenshotManager', () => {
 
             const button = getCaptureButton();
 
-            await act(async () => {
-                fireEvent.click(button);
-                await waitForNextTick();
+            // Click and check loading state
+            fireEvent.click(button);
+            await waitFor(() => {
                 expect(button).toHaveAttribute('data-loading', 'true');
                 expect(button).toBeDisabled();
+            });
 
-                // Try clicking while loading
-                fireEvent.click(button);
-                fireEvent.click(button);
+            // Try clicking while loading
+            fireEvent.click(button);
+            fireEvent.click(button);
 
-                await new Promise(resolve => setTimeout(resolve, 100));
-                expect(button).not.toHaveAttribute('data-loading');
+            // Wait for capture to complete
+            await waitFor(() => {
+                expect(button).toHaveAttribute('data-loading', 'false');
                 expect(button).not.toBeDisabled();
                 expect(onCapture).toHaveBeenCalledTimes(1);
-            });
+            }, { timeout: 200 });
         });
 
         it('should maintain button state during capture lifecycle', async () => {
@@ -271,16 +251,18 @@ describe('ScreenshotManager', () => {
 
             const button = getCaptureButton();
 
-            await act(async () => {
-                fireEvent.click(button);
-                await waitForNextTick();
+            // Click and check loading state
+            fireEvent.click(button);
+            await waitFor(() => {
                 expect(button).toHaveAttribute('data-loading', 'true');
                 expect(button).toBeDisabled();
-
-                await new Promise(resolve => setTimeout(resolve, 100));
-                expect(button).not.toHaveAttribute('data-loading');
-                expect(button).not.toBeDisabled();
             });
+
+            // Wait for capture to complete
+            await waitFor(() => {
+                expect(button).toHaveAttribute('data-loading', 'false');
+                expect(button).not.toBeDisabled();
+            }, { timeout: 200 });
         });
     });
 
@@ -299,20 +281,22 @@ describe('ScreenshotManager', () => {
 
             const button = getCaptureButton();
 
-            await act(async () => {
-                fireEvent.click(button);
-                await waitForNextTick();
+            // Click and check loading state
+            fireEvent.click(button);
+            await waitFor(() => {
                 expect(button).toHaveAttribute('data-loading', 'true');
                 expect(button).toBeDisabled();
-
-                // Try clicking again while capturing
-                fireEvent.click(button);
-                expect(onCapture).toHaveBeenCalledTimes(1);
-
-                await new Promise(resolve => setTimeout(resolve, 100));
-                expect(button).not.toHaveAttribute('data-loading');
-                expect(button).not.toBeDisabled();
             });
+
+            // Try clicking again while capturing
+            fireEvent.click(button);
+            expect(onCapture).toHaveBeenCalledTimes(1);
+
+            // Wait for capture to complete
+            await waitFor(() => {
+                expect(button).toHaveAttribute('data-loading', 'false');
+                expect(button).not.toBeDisabled();
+            }, { timeout: 200 });
         });
 
         it('should handle capture cancellation', async () => {
@@ -332,17 +316,19 @@ describe('ScreenshotManager', () => {
 
             const button = getCaptureButton();
 
-            await act(async () => {
-                fireEvent.click(button);
-                await waitForNextTick();
+            // Click and check loading state
+            fireEvent.click(button);
+            await waitFor(() => {
                 expect(button).toHaveAttribute('data-loading', 'true');
                 expect(button).toBeDisabled();
+            });
 
-                // Resolve capture
-                resolveCapture?.();
-                await waitForNextTick();
+            // Resolve capture
+            resolveCapture?.();
 
-                expect(button).not.toHaveAttribute('data-loading');
+            // Wait for loading state to be removed
+            await waitFor(() => {
+                expect(button).toHaveAttribute('data-loading', 'false');
                 expect(button).not.toBeDisabled();
             });
         });

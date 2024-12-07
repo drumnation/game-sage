@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom';
+import { Buffer } from 'buffer';
 import { mockElectronAPI } from './helpers/mockElectron';
 import React from 'react';
-import type { ButtonProps } from 'antd';
+import type { ButtonProps, AlertProps } from 'antd';
 
 // Mock window.electron
 Object.defineProperty(window, 'electronAPI', {
@@ -12,21 +13,30 @@ Object.defineProperty(window, 'electronAPI', {
 // Mock Ant Design Button
 jest.mock('antd', () => ({
   Button: React.forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ children, loading, onClick, disabled, htmlType,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      type, href, autoInsertSpace,
-      ...props }, ref) => (
-      <button
-        ref={ref}
-        onClick={onClick}
-        disabled={disabled || (typeof loading === 'boolean' ? loading : loading?.delay !== undefined)}
-        data-loading={loading}
-        type={htmlType as "button" | "submit" | "reset" | undefined}
-        {...props}
-      >
-        {children}
-      </button>
-    ))
+    ({ children, loading, onClick, disabled, htmlType, ...props }, ref) => {
+      const isLoading = loading === true || (typeof loading === 'object' && loading.delay !== undefined);
+      const buttonType = htmlType === 'submit' || htmlType === 'reset' || htmlType === 'button' ? htmlType : 'button';
+      return (
+        <button
+          ref={ref}
+          onClick={onClick}
+          disabled={disabled || isLoading}
+          data-loading={isLoading.toString()}
+          // @ts-expect-error - TypeScript doesn't know about the htmlType prop
+          type={buttonType as "button" | "submit" | "reset" | undefined}
+          {...props}
+        >
+          {children}
+        </button>
+      );
+    }
+  ),
+  Alert: ({ message, description, type }: AlertProps) => (
+    <div role="alert" data-type={type}>
+      {message && <div data-testid="alert-message">{message}</div>}
+      {description && <div data-testid="alert-description">{description}</div>}
+    </div>
+  )
 }));
 
 // Mock ResizeObserver
@@ -60,6 +70,26 @@ class MockIntersectionObserver implements IntersectionObserver {
 
 global.ResizeObserver = MockResizeObserver;
 global.IntersectionObserver = MockIntersectionObserver;
+
+// Mock screenshot-desktop module
+jest.mock('screenshot-desktop', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => Promise.resolve(Buffer.from('mock-screenshot-data')))
+}));
+
+// Mock electron screen API
+jest.mock('electron', () => ({
+  screen: {
+    getAllDisplays: jest.fn().mockReturnValue([
+      {
+        id: 1,
+        label: 'Display 1',
+        bounds: { x: 0, y: 0, width: 1920, height: 1080 }
+      }
+    ]),
+    getPrimaryDisplay: jest.fn().mockReturnValue({ id: 1 })
+  }
+}));
 
 // Suppress console errors during tests
 const originalError = console.error;
