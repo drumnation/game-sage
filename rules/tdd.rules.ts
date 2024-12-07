@@ -1,4 +1,22 @@
 export const TDDRules = {
+  fileStructure: {
+    description: 'Where to place test files',
+    rules: [
+      {
+        type: 'services',
+        location: '/src/test directory',
+        pattern: 'src/test/[feature]/[service].test.ts',
+        example: 'src/test/screenshots/ScreenshotService.test.ts'
+      },
+      {
+        type: 'components',
+        location: 'alongside component files',
+        pattern: 'src/components/[Component]/[Component].test.tsx',
+        example: 'src/components/ScreenshotViewer/ScreenshotViewer.test.tsx'
+      }
+    ]
+  },
+
   /**
    * Core TDD Cycle
    */
@@ -202,5 +220,37 @@ const result = analyzer.analyze(screenshot);
 // After refactoring
 const gameState = await analyzer.detectGameState(screenshot);
 const analysis = await analyzer.provideTacticalAdvice(gameState);`
+  },
+
+  /**
+   * Test Management
+   */
+  testManagement: {
+    description: 'How to manage and extend existing tests',
+    rules: [
+      {
+        type: 'check_existing',
+        description: 'Before adding new tests, check all existing test files',
+        locations: [
+          'src/test/**/*.test.ts',
+          'src/test/**/*.test.tsx',
+          'src/components/**/*.test.tsx'
+        ]
+      },
+      {
+        type: 'extend_not_duplicate',
+        description: 'Add to existing test files instead of creating duplicates',
+        steps: [
+          'Review all describe blocks in existing tests',
+          'Add new test cases to relevant describe blocks',
+          'Create new describe blocks only for new functionality'
+        ]
+      },
+      {
+        type: 'test_organization',
+        description: 'Keep tests organized by feature and behavior',
+        pattern: 'describe("[Feature]", () => { describe("[Behavior]", () => {...}) })'
+      }
+    ]
   }
 };

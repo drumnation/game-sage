@@ -6,6 +6,17 @@ import commonjs from '@rollup/plugin-commonjs'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@atoms': path.resolve(__dirname, './src/components/atoms'),
+      '@molecules': path.resolve(__dirname, './src/components/molecules'),
+      '@organisms': path.resolve(__dirname, './src/components/organisms'),
+      '@features': path.resolve(__dirname, './src/features'),
+      '@services': path.resolve(__dirname, './src/services'),
+      '@utils': path.resolve(__dirname, './src/utils')
+    }
+  },
   plugins: [
     react(),
     electron({

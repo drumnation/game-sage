@@ -1,45 +1,53 @@
+import 'styled-components';
+
+declare module 'styled-components' {
+  export interface DefaultTheme {
+    colors: {
+      background: string;
+      primary: string;
+      text: string;
+    };
+    borderRadius: string;
+    spacing: {
+      small: string;
+      medium: string;
+      large: string;
+    };
+    typography: {
+      fontSize: {
+        small: string;
+        medium: string;
+        large: string;
+      };
+      fontWeight: {
+        normal: number;
+        bold: number;
+      };
+    };
+  }
+}
+
 export const theme = {
   colors: {
+    background: '#ffffff',
     primary: '#1890ff',
-    secondary: '#722ed1',
-    success: '#52c41a',
-    warning: '#faad14',
-    error: '#f5222d',
-    background: '#141414',
-    surface: '#1f1f1f',
-    text: '#ffffff',
+    text: '#000000',
   },
+  borderRadius: '4px',
   spacing: {
-    xs: '4px',
-    sm: '8px',
-    md: '16px',
-    lg: '24px',
-    xl: '32px',
-  },
-  borderRadius: {
-    sm: '4px',
-    md: '8px',
-    lg: '16px',
+    small: '8px',
+    medium: '16px',
+    large: '24px',
   },
   typography: {
-    h1: {
-      fontSize: '2.5rem',
-      fontWeight: 600,
+    fontSize: {
+      small: '12px',
+      medium: '14px',
+      large: '16px',
     },
-    h2: {
-      fontSize: '2rem',
-      fontWeight: 600,
-    },
-    body: {
-      fontSize: '1rem',
-      fontWeight: 400,
+    fontWeight: {
+      normal: 400,
+      bold: 600,
     },
   },
-} as const;
-
-export type Theme = typeof theme;
-
-// Add type definition for styled-components
-declare module 'styled-components' {
-  export interface DefaultTheme extends Theme { }
-} 
+}; 

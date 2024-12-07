@@ -17,6 +17,9 @@ const componentStructureRules = [
   "Organize subcomponents in a `components/` subfolder with atomic design principles (atoms, molecules, organisms)",
   "Keep component hierarchy shallow (maximum 2-3 levels deep)",
   "Prevent unnecessary prop drilling by using context, Redux, or Electron IPC communication where applicable",
+  "Use path aliases (@atoms/*, @molecules/*, etc.) for importing components",
+  "Maintain clear separation between atomic design levels using appropriate aliases",
+  "Keep imports organized by alias type for better readability",
 ];
 
 // Electron Best Practices
@@ -146,21 +149,20 @@ src/
 `;
 
 // Additional Instructions
-const additionalInstructions = `
-1. Follow KISS (Keep It Simple, Stupid) and YAGNI (You Aren't Gonna Need It) principles for simplicity.
-2. Adhere to SOLID principles and write clean, maintainable code.
-3. Optimize performance by minimizing re-renders, lazy-loading components, and optimizing data fetching.
-4. Document all changes, including purpose and rationale, in commit messages and READMEs.
-5. Use path aliases for better maintainability in large projects.
-6. Ensure accessibility standards are met in all components.
-7. Validate and sanitize data passed between Electron's main and renderer processes.
-8. Use Vite's plugin ecosystem to extend functionality effectively.
-9. Ensure `pnpm` dependency hoisting does not introduce version conflicts or inconsistencies.
-10. Optimize build times and bundle sizes with Vite's fast build system.
-`;
+const additionalInstructions = [
+  "1. Follow KISS (Keep It Simple, Stupid) and YAGNI (You Aren't Gonna Need It) principles for simplicity.",
+  "2. Adhere to SOLID principles and write clean, maintainable code.",
+  "3. Optimize performance by minimizing re-renders, lazy-loading components, and optimizing data fetching.",
+  "4. Document all changes, including purpose and rationale, in commit messages and READMEs.",
+  "5. Use path aliases for better maintainability in large projects.",
+  "6. Ensure accessibility standards are met in all components.",
+  "7. Validate and sanitize data passed between Electron's main and renderer processes.",
+  "8. Use Vite's plugin ecosystem to extend functionality effectively.",
+  "9. Ensure pnpm dependency hoisting does not introduce version conflicts or inconsistencies.",
+  "10. Optimize build times and bundle sizes with Vite's fast build system."
+].join('\n');
 
 // Example Integration
-```tsx
 const exampleIntegration = `
 import React, { useCallback } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
@@ -170,14 +172,14 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from './store/store';
 
 // Styled Component wrapping Ant Design Button
-const StyledButton = styled(Button)`
-  background-color: ${({ theme }) => theme.primaryColor};
-  color: ${({ theme }) => theme.textColor};
+const StyledButton = styled(Button)\`
+  background-color: \${({ theme }) => theme.primaryColor};
+  color: \${({ theme }) => theme.textColor};
 
   &:hover {
-    background-color: ${({ theme }) => theme.hoverColor};
+    background-color: \${({ theme }) => theme.hoverColor};
   }
-`;
+\`;
 
 // Redux Selector Example
 const selectCount = (state: RootState) => state.counter.value;
@@ -204,7 +206,87 @@ const App = () => {
 };
 
 export default App;
-`;```
+`;
+
+// Path Alias Configuration
+const pathAliasRules = {
+  baseAliases: {
+    "@/*": "src/*",                           // Base source directory
+    "@atoms/*": "src/components/atoms/*",      // Atomic components - smallest building blocks
+    "@molecules/*": "src/components/molecules/*", // Atomic components - groups of atoms
+    "@organisms/*": "src/components/organisms/*", // Atomic components - complex UI sections
+    "@features/*": "src/features/*",           // Feature modules
+    "@services/*": "src/services/*",           // Service layer
+    "@utils/*": "src/utils/*"                  // Utility functions and helpers
+  },
+
+  usageGuidelines: [
+    "Always use path aliases instead of relative imports when crossing module boundaries",
+    "Prefer relative imports only for files within the same module/component folder",
+    "Ensure all imports follow the established alias pattern for consistency",
+    "Use the most specific alias possible (e.g., @atoms/* over @/* for atomic components)",
+  ],
+
+  examples: {
+    correct: [
+      'import { Button } from "@atoms/Button";',
+      'import { UserCard } from "@molecules/UserCard";',
+      'import { Header } from "@organisms/Header";',
+      'import { userService } from "@services/user";',
+      'import { formatDate } from "@utils/date";'
+    ],
+    incorrect: [
+      'import { Button } from "../../../components/atoms/Button";',
+      'import { UserCard } from "@/components/molecules/UserCard";',
+      'import { Header } from "../../organisms/Header";'
+    ]
+  },
+
+  configuration: {
+    required: [
+      "Configure aliases in both tsconfig.json and vite.config.ts",
+      "Ensure baseUrl is set to '.' in tsconfig.json",
+      "Use path.resolve in vite.config.ts for alias resolution"
+    ],
+    files: {
+      tsconfig: {
+        paths: {
+          "@/*": ["src/*"],
+          "@atoms/*": ["src/components/atoms/*"],
+          "@molecules/*": ["src/components/molecules/*"],
+          "@organisms/*": ["src/components/organisms/*"],
+          "@features/*": ["src/features/*"],
+          "@services/*": ["src/services/*"],
+          "@utils/*": ["src/utils/*"]
+        }
+      },
+      vite: {
+        resolve: {
+          alias: {
+            "@": "./src",
+            "@atoms": "./src/components/atoms",
+            "@molecules": "./src/components/molecules",
+            "@organisms": "./src/components/organisms",
+            "@features": "./src/features",
+            "@services": "./src/services",
+            "@utils": "./src/utils"
+          }
+        }
+      }
+    }
+  },
+
+  folderStructure: `
+src/
+  components/
+    atoms/       # Basic building blocks (Button, Input, Text)
+    molecules/   # Combinations of atoms (SearchBar, UserCard)
+    organisms/   # Complex UI sections (Header, Sidebar)
+  features/      # Feature-specific code
+  services/      # Business logic and API calls
+  utils/         # Helper functions and utilities
+  `
+};
 
 export {
   preferFunctionalComponents,
@@ -221,4 +303,5 @@ export {
   errorHandlingRules,
   folderStructure,
   additionalInstructions,
+  pathAliasRules,
 };

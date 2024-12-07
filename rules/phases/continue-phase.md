@@ -8,16 +8,18 @@ First, analyze the current codebase and list:
 
 For each implemented feature:
 
-Review the component structure according to our cursor rules
-Check if all required files exist (.tsx, .types.ts, .styles.ts, .hook.ts, etc.)
-Verify test coverage (unit tests, integration tests)
-Identify any missing tests or incomplete implementations
+- Review the component structure according to our cursor rules
+- Check if all required files exist (.tsx, .types.ts, .styles.ts, .hook.ts, etc.)
+- Verify test coverage (unit tests, integration tests)
+- Identify any missing tests or incomplete implementations
 
 Create a summary report that includes:
 
-Completed features with full test coverage
-Features needing additional tests
-Features requiring structural improvements
-A prioritized list of remaining tasks
+- Completed features with full test coverage
+- Features needing additional tests
+- Features requiring structural improvements
+- A prioritized list of remaining tasks
 
-Please start by examining the code I'm about to share.
+Please start by examining the instructions I'm about to share.
+
+Don't start coding right away.
