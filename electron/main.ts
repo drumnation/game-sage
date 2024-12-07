@@ -1,9 +1,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import * as path from 'path'
-import { HotkeyService } from './services/hotkey/HotkeyService'
-import type { HotkeyConfig } from './services/hotkey/types'
+import { join } from 'path'
 import { ScreenshotService } from './services/screenshot/ScreenshotService'
+import { HotkeyService } from './services/hotkey/HotkeyService'
+import type { CaptureFrame } from './types/electron-api'
 import type { ScreenshotConfig } from './services/screenshot/types'
+import type { HotkeyConfig } from './services/hotkey/types'
 
 interface MessagePayload {
   success: boolean;
@@ -22,7 +23,7 @@ interface MessagePayload {
   error?: string;
 }
 
-const DIST_PATH = path.join(__dirname, '../dist')
+const DIST_PATH = join(__dirname, '../dist')
 
 let mainWindow: BrowserWindow | null = null
 let screenshotService: ScreenshotService | null = null
@@ -38,7 +39,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -48,7 +49,7 @@ function createWindow() {
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
   } else {
-    mainWindow.loadFile(path.join(DIST_PATH, 'index.html'))
+    mainWindow.loadFile(join(DIST_PATH, 'index.html'))
   }
 
   if (!app.isPackaged) {

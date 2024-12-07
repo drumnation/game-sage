@@ -23,15 +23,15 @@ const App: React.FC = () => {
   const [screenshots, setScreenshots] = useState<ScreenshotType[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
   const [errorState, setErrorState] = useState<Error | null>(null);
-  const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null);
+  const [captureResult, setCaptureResult] = useState<CaptureResult[] | null>(null);
 
   const isCaptureFrame = (data: CaptureResult): data is CaptureFrame => {
-    return 'metadata' in data && 'buffer' in data;
+    return 'buffer' in data && 'metadata' in data;
   };
 
   useEffect(() => {
     const handleCaptureFrame = (data: CaptureFrame | CaptureError) => {
-      if ('buffer' in data && 'metadata' in data) {
+      if (isCaptureFrame(data)) {
         const newScreenshot: ScreenshotType = {
           id: Date.now().toString(),
           imageData: `data:image/png;base64,${Buffer.from(data.buffer).toString('base64')}`,
@@ -56,7 +56,7 @@ const App: React.FC = () => {
   const handleCapture = useCallback(async () => {
     try {
       const result = await api.captureNow();
-      if (isCaptureFrame(result)) {
+      if (result.length > 0 && isCaptureFrame(result[0])) {
         setCaptureResult(result);
       } else {
         throw new Error('Failed to capture screenshot');
@@ -82,11 +82,11 @@ const App: React.FC = () => {
             onSelect={setSelectedId}
             onError={handleError}
           />
-          {captureResult && isCaptureFrame(captureResult) && (
+          {captureResult && captureResult.length > 0 && isCaptureFrame(captureResult[0]) && (
             <div>
-              <p>Captured at: {new Date(captureResult.metadata.timestamp).toLocaleString()}</p>
+              <p>Captured at: {new Date(captureResult[0].metadata.timestamp).toLocaleString()}</p>
               <img
-                src={`data:image/png;base64,${Buffer.from(captureResult.buffer).toString('base64')}`}
+                src={`data:image/png;base64,${Buffer.from(captureResult[0].buffer).toString('base64')}`}
                 alt="Screenshot"
               />
             </div>

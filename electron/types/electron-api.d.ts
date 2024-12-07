@@ -60,7 +60,7 @@ export interface ElectronAPI {
     off(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
     updateConfig(config: PartialScreenshotConfig): Promise<void>;
     getConfig(): Promise<ScreenshotConfig>;
-    captureNow(): Promise<CaptureFrame | CaptureError>;
+    captureNow(): Promise<CaptureResult[]>;
     listDisplays(): Promise<DisplayInfo[]>;
 }
 

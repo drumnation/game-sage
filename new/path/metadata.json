@@ -1,0 +1,28 @@
+{
+  "bc8175cb-7446-45fb-8a6f-d481ca370471": {
+    "id": "bc8175cb-7446-45fb-8a6f-d481ca370471",
+    "path": "new/path/screenshot-2024-12-07T03-47-10-978Z.png",
+    "metadata": {
+      "timestamp": 1733543230977,
+      "displayId": "1",
+      "width": 1920,
+      "height": 1080,
+      "format": "jpeg"
+    },
+    "size": 126,
+    "createdAt": 1733543230978
+  },
+  "36c2aa31-48a1-4776-aa36-6d717ecc5146": {
+    "id": "36c2aa31-48a1-4776-aa36-6d717ecc5146",
+    "path": "new/path/screenshot-2024-12-07T03-47-10-983Z.png",
+    "metadata": {
+      "timestamp": 1733543230983,
+      "displayId": "1",
+      "width": 1920,
+      "height": 1080,
+      "format": "jpeg"
+    },
+    "size": 126,
+    "createdAt": 1733543230983
+  }
+}

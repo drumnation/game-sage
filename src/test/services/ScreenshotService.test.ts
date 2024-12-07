@@ -1,7 +1,6 @@
-import { ScreenshotService } from '../../../electron/services/screenshot/ScreenshotService';
-import { StorageService } from '../../../electron/services/storage/StorageService';
-import type { CaptureResult, CaptureFrame, CaptureError } from '../../../electron/types/electron-api';
 import sharp from 'sharp';
+import { ScreenshotService } from '../../../electron/services/screenshot/ScreenshotService';
+import type { CaptureFrame, CaptureResult } from '../../../electron/types/electron-api';
 
 // Type guard for CaptureFrame
 const isCaptureFrame = (result: CaptureResult): result is CaptureFrame => {
