@@ -37,6 +37,13 @@ export const CursorProjectRules = {
 │   │       ├── hooks/         # Feature hooks
 │   │       └── README.md      # Feature documentation
 │   ├── context/               # React contexts
+│   ├── templates/             # Template components
+│   ├── pages/                  # Application pages
+│   │   ├── MainApp/           # Main application page
+│   │   └── {PageName}/        # Other pages
+│   │       ├── components/    # Page-specific components
+│   │       ├── hooks/         # Page-specific hooks
+│   │       └── index.tsx      # Page entry point
 │   ├── services/              # Application services
 │   ├── store/                 # Redux store
 │   ├── styles/                # Styling and theme
@@ -160,6 +167,7 @@ ComponentName/
           'Test loading states',
           'Test user interactions',
           'Test accessibility'
+          'See `rules/jest.rules.ts` for detailed test writing rules'
         ]
       }
     ]
@@ -227,10 +235,10 @@ ComponentName/
    */
   pathAliases: {
     baseAliases: {
-      "@/*": "src/*",
       "@atoms/*": "src/components/atoms/*",
       "@molecules/*": "src/components/molecules/*",
       "@organisms/*": "src/components/organisms/*",
+      "@templates/*": "src/templates/*",
       "@features/*": "src/features/*",
       "@services/*": "src/services/*",
       "@styles/*": "src/styles/*",

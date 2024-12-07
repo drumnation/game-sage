@@ -25,11 +25,16 @@
     "typeRoots": [
       "./electron/types",
       "./node_modules/@types"
+    ],
+    "types": [
+      "electron",
+      "node"
     ]
   },
   "include": [
     "src",
-    "electron"
+    "electron",
+    "electron/types/electron.d.ts"
   ],
   "references": [
     {

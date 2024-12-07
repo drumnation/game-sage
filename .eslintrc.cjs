@@ -14,13 +14,18 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    '@typescript-eslint/no-unused-vars': ['error', {
+      'argsIgnorePattern': '^_',
+      'varsIgnorePattern': '^_',
+      'caughtErrorsIgnorePattern': '^_'
+    }]
   },
   globals: {
     React: 'readonly'
   },
   overrides: [
     {
-      files: ['**/*.test.tsx', '**/*.test.ts', '**/testUtils.tsx'],
+      files: ['**/*.test.tsx', '**/*.test.ts', '**/testUtils.tsx', '**/setupTests.tsx'],
       rules: {
         '@typescript-eslint/no-unused-vars': 'off'
       }

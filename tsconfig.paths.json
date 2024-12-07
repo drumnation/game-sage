@@ -2,9 +2,6 @@
     "compilerOptions": {
         "baseUrl": ".",
         "paths": {
-            "@/*": [
-                "src/*"
-            ],
             "@atoms": [
                 "src/components/atoms/index"
             ],
@@ -13,6 +10,9 @@
             ],
             "@organisms": [
                 "src/components/organisms/index"
+            ],
+            "@templates/*": [
+                "src/templates/*"
             ],
             "@features/*": [
                 "src/features/*"

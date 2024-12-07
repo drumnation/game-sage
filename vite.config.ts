@@ -8,19 +8,19 @@ import commonjs from '@rollup/plugin-commonjs'
 export default defineConfig({
   resolve: {
     alias: {
-      '@/*': path.resolve(__dirname, 'src/*'),
       '@atoms': path.resolve(__dirname, 'src/components/atoms/index'),
+      '@context/*': path.resolve(__dirname, 'src/context/*'),
+      '@electron-services/*': path.resolve(__dirname, 'electron/services/*'),
+      '@electron/*': path.resolve(__dirname, 'electron/*'),
+      '@features/*': path.resolve(__dirname, 'src/features/*'),
       '@molecules': path.resolve(__dirname, 'src/components/molecules/index'),
       '@organisms': path.resolve(__dirname, 'src/components/organisms/index'),
-      '@features/*': path.resolve(__dirname, 'src/features/*'),
       '@services/*': path.resolve(__dirname, 'src/services/*'),
-      '@context/*': path.resolve(__dirname, 'src/context/*'),
       '@store/*': path.resolve(__dirname, 'src/store/*'),
       '@styles/*': path.resolve(__dirname, 'src/styles/*'),
+      '@templates/*': path.resolve(__dirname, 'src/templates/*'),
       '@test/*': path.resolve(__dirname, 'src/test/*'),
       '@types/*': path.resolve(__dirname, 'src/types/*'),
-      '@electron/*': path.resolve(__dirname, 'electron/*'),
-      '@electron-services/*': path.resolve(__dirname, 'electron/services/*')
     }
   },
   plugins: [

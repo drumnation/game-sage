@@ -2,8 +2,9 @@ import styled from 'styled-components';
 
 export const ScreenshotContainer = styled.div`
     display: flex;
-    height: 100vh;
-    border: 2px solid red;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
 `;
 
 export const ScreenshotSider = styled.div`

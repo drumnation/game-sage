@@ -55,7 +55,7 @@ export const CardFooter = styled.div`
 
     .scene-score {
         background-color: rgba(0, 0, 0, 0.1);
-        color: ${({ theme }) => theme.colors.text};
+        color: ${({ theme }) => theme.colors.textPrimary};
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 12px;

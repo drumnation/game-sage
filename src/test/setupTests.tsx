@@ -3,6 +3,8 @@ import { Buffer } from 'buffer';
 import { mockElectronAPI } from './helpers/mockElectron';
 import React from 'react';
 import type { ButtonProps, AlertProps } from 'antd';
+import { TextEncoder } from 'util';
+import { fetch, Headers, Request, Response } from 'cross-fetch';
 
 // Mock window.electron
 Object.defineProperty(window, 'electronAPI', {
@@ -41,11 +43,8 @@ jest.mock('antd', () => ({
 
 // Mock ResizeObserver
 class MockResizeObserver implements ResizeObserver {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_callback: ResizeObserverCallback) { }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   observe(_target: Element, _options?: ResizeObserverOptions) { }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   unobserve(_target: Element) { }
   disconnect() { }
 }
@@ -56,11 +55,8 @@ class MockIntersectionObserver implements IntersectionObserver {
   rootMargin: string = '0px';
   thresholds: ReadonlyArray<number> = [0];
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   observe(_target: Element) { }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   unobserve(_target: Element) { }
   disconnect() { }
   takeRecords(): IntersectionObserverEntry[] {
@@ -108,4 +104,10 @@ beforeAll(() => {
 
 afterAll(() => {
   console.error = originalError;
-}); 
+});
+
+global.TextEncoder = TextEncoder;
+global.fetch = fetch;
+global.Headers = Headers;
+global.Request = Request;
+global.Response = Response; 
