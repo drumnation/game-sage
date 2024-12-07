@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Layout, ConfigProvider, theme } from 'antd';
-import { Screenshot } from '@features/Screenshot';
+import { Screenshot } from './features/Screenshot';
 import type { CaptureResult, CaptureFrame, CaptureError } from '@electron/types';
-import { useElectron } from '@context/ElectronContext';
+import { useElectron } from './context/ElectronContext';
 
 interface ScreenshotType {
   id: string;
