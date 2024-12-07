@@ -100,4 +100,127 @@ describe('HotkeyService', () => {
             expect(hotkeyService.isRegistered('nonexistent' as keyof HotkeyConfig)).toBe(false);
         });
     });
+
+    describe('State Management', () => {
+        it('should maintain correct state during rapid hotkey updates', () => {
+            // Arrange
+            const accelerators = ['CommandOrControl+Shift+A', 'CommandOrControl+Shift+B', 'CommandOrControl+Shift+C'];
+            (globalShortcut.register as jest.Mock).mockReturnValue(true);
+            (globalShortcut.isRegistered as jest.Mock).mockReturnValue(true);
+
+            // Act
+            accelerators.forEach(accelerator => {
+                hotkeyService.registerHotkey('captureNow', accelerator, mockCallback);
+            });
+
+            // Assert - should only register once since it's the same action
+            expect(globalShortcut.register).toHaveBeenCalledTimes(1);
+            expect(globalShortcut.unregister).not.toHaveBeenCalled();
+            expect(hotkeyService.isRegistered('captureNow')).toBe(true);
+        });
+
+        it('should handle concurrent hotkey operations correctly', async () => {
+            // Arrange
+            (globalShortcut.register as jest.Mock).mockReturnValue(true);
+            (globalShortcut.isRegistered as jest.Mock).mockReturnValue(true);
+
+            // Act - Register hotkeys sequentially to ensure deterministic behavior
+            hotkeyService.registerHotkey('captureNow', 'CommandOrControl+Shift+D', mockCallback);
+            hotkeyService.registerHotkey('toggleCapture', 'CommandOrControl+Shift+E', mockCallback);
+            hotkeyService.unregisterHotkey('captureNow');
+
+            // Assert
+            expect(hotkeyService.isRegistered('toggleCapture')).toBe(true);
+            expect(hotkeyService.isRegistered('captureNow')).toBe(false);
+        });
+    });
+
+    describe('Error Handling', () => {
+        it('should handle registration failure gracefully', () => {
+            // Arrange
+            (globalShortcut.register as jest.Mock).mockImplementation(() => {
+                throw new Error('Registration failed');
+            });
+            (globalShortcut.isRegistered as jest.Mock).mockReturnValue(false);
+
+            // Act & Assert
+            expect(() => {
+                hotkeyService.registerHotkey('captureNow', defaultConfig.captureNow, mockCallback);
+            }).toThrow('Failed to register hotkey: Registration failed');
+            expect(hotkeyService.isRegistered('captureNow')).toBe(false);
+        });
+
+        it('should prevent duplicate registrations with different callbacks', () => {
+            // Arrange
+            (globalShortcut.register as jest.Mock).mockReturnValue(true);
+            (globalShortcut.isRegistered as jest.Mock).mockReturnValue(true);
+            const callback1 = jest.fn();
+            const callback2 = jest.fn();
+
+            // Act
+            hotkeyService.registerHotkey('captureNow', defaultConfig.captureNow, callback1);
+            hotkeyService.registerHotkey('captureNow', defaultConfig.captureNow, callback2);
+
+            // Assert - should only register once
+            expect(globalShortcut.register).toHaveBeenCalledTimes(1);
+            expect(hotkeyService.isRegistered('captureNow')).toBe(true);
+        });
+    });
+
+    describe('Platform Specific Behavior', () => {
+        it('should handle platform-specific accelerators', () => {
+            // Arrange
+            (globalShortcut.register as jest.Mock).mockReturnValue(true);
+            (globalShortcut.isRegistered as jest.Mock).mockReturnValue(true);
+            const platformAccelerator = process.platform === 'darwin' ? 'Command+Shift+P' : 'Control+Shift+P';
+
+            // Act
+            hotkeyService.registerHotkey('captureNow', platformAccelerator, mockCallback);
+
+            // Assert
+            expect(globalShortcut.register).toHaveBeenCalledWith(platformAccelerator, expect.any(Function));
+            expect(hotkeyService.isRegistered('captureNow')).toBe(true);
+        });
+    });
+
+    describe('Performance', () => {
+        it('should handle rapid registration/unregistration efficiently', () => {
+            // Arrange
+            (globalShortcut.register as jest.Mock).mockReturnValue(true);
+            (globalShortcut.isRegistered as jest.Mock).mockReturnValue(true);
+            const iterations = 10;
+            const startTime = performance.now();
+
+            // Act
+            for (let i = 1; i <= iterations; i++) {
+                // Use valid accelerator format
+                hotkeyService.registerHotkey('captureNow', `CommandOrControl+Shift+F${i}`, mockCallback);
+                hotkeyService.unregisterHotkey('captureNow');
+            }
+
+            // Assert
+            const duration = performance.now() - startTime;
+            expect(duration).toBeLessThan(1000); // Should complete within 1 second
+        });
+    });
+
+    describe('Resource Cleanup', () => {
+        it('should clean up all resources on unregisterAll', () => {
+            // Arrange
+            (globalShortcut.register as jest.Mock).mockReturnValue(true);
+            const hotkeys = ['captureNow', 'toggleCapture'] as const;
+            hotkeys.forEach(key => {
+                hotkeyService.registerHotkey(key, defaultConfig[key], mockCallback);
+            });
+
+            // Act
+            hotkeyService.unregisterAll();
+
+            // Assert
+            expect(globalShortcut.unregisterAll).toHaveBeenCalled();
+            hotkeys.forEach(key => {
+                expect(hotkeyService.isRegistered(key)).toBe(false);
+            });
+        });
+    });
 }); 

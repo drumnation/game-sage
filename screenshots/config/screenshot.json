@@ -1,0 +1,10 @@
+{
+  "captureInterval": 1000,
+  "format": "jpeg",
+  "quality": 80,
+  "detectSceneChanges": false,
+  "sceneChangeThreshold": 0.1,
+  "activeDisplays": [
+    "1"
+  ]
+}

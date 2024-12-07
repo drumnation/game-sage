@@ -3,7 +3,7 @@ import type { Config } from '@jest/types';
 const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/test/setupTests.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/test/setupTests.tsx'],
   moduleNameMapper: {
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png|jpg|jpeg)$': '<rootDir>/src/test/__mocks__/fileMock.ts',

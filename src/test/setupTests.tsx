@@ -1,11 +1,33 @@
 import '@testing-library/jest-dom';
 import { mockElectronAPI } from './helpers/mockElectron';
+import React from 'react';
+import type { ButtonProps } from 'antd';
 
 // Mock window.electron
 Object.defineProperty(window, 'electronAPI', {
   value: mockElectronAPI,
   writable: true
 });
+
+// Mock Ant Design Button
+jest.mock('antd', () => ({
+  Button: React.forwardRef<HTMLButtonElement, ButtonProps>(
+    ({ children, loading, onClick, disabled, htmlType,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      type, href, autoInsertSpace,
+      ...props }, ref) => (
+      <button
+        ref={ref}
+        onClick={onClick}
+        disabled={disabled || (typeof loading === 'boolean' ? loading : loading?.delay !== undefined)}
+        data-loading={loading}
+        type={htmlType as "button" | "submit" | "reset" | undefined}
+        {...props}
+      >
+        {children}
+      </button>
+    ))
+}));
 
 // Mock ResizeObserver
 class MockResizeObserver implements ResizeObserver {

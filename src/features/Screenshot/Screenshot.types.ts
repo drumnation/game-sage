@@ -105,10 +105,6 @@ export interface ScreenshotManagerProps {
     onCapture: () => Promise<void>;
     /** Optional error handler */
     onError?: (error: Error) => void;
-    /** Whether a capture is in progress */
-    isCapturing: boolean;
-    /** Current error state */
-    error: Error | null;
 }
 
 export type { Screenshot as ScreenshotType }; 
