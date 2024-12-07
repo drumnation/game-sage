@@ -32,9 +32,6 @@
             "@test/*": [
                 "src/test/*"
             ],
-            "@types/*": [
-                "src/types/*"
-            ],
             "@electron/*": [
                 "electron/*"
             ],

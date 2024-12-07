@@ -48,7 +48,6 @@ export const CursorProjectRules = {
 │   ├── store/                 # Redux store
 │   ├── styles/                # Styling and theme
 │   ├── test/                  # Test files
-│   ├── types/                 # Type definitions
 │   └── __fixtures__/         # Test fixtures
 
 ├── rules/                       # Project rules and guidelines

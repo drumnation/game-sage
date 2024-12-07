@@ -20,7 +20,6 @@ export default defineConfig({
       '@styles/*': path.resolve(__dirname, 'src/styles/*'),
       '@templates/*': path.resolve(__dirname, 'src/templates/*'),
       '@test/*': path.resolve(__dirname, 'src/test/*'),
-      '@types/*': path.resolve(__dirname, 'src/types/*'),
     }
   },
   plugins: [
