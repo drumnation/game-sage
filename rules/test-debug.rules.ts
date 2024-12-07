@@ -185,7 +185,7 @@ export const TestDebugRules = {
     }
 };
 
-```command
+/* COMMAND:
 - Start a new terminal instance and run 'pnpm test'
 - Recursively check for test failures and attempt to fix them.
-```
+*/

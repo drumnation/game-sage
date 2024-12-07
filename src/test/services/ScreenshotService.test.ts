@@ -105,14 +105,14 @@ describe('Screenshot Capture System', () => {
 
         it('releases resources on cleanup', async () => {
             // Arrange
+            const service = new ScreenshotService();
             await service.start();
-            await service.captureNow(); // Ensure we have some frames
 
             // Act
-            service.dispose();
+            service.stop();
 
             // Assert
-            expect(service['isCapturing']).toBe(false);
+            expect(service.isCapturing()).toBe(false);
             expect(service['lastFrames'].size).toBe(0);
             expect(service['captureInterval']).toBe(null);
         });
