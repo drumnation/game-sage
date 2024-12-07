@@ -61,6 +61,7 @@ export interface ElectronAPI {
     off(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
     updateConfig(config: Partial<ScreenshotConfig>): Promise<void>;
     getConfig(): Promise<ScreenshotConfig>;
+    captureNow(): Promise<CaptureResult[]>;
 }
 
 export interface MessagePayload {
@@ -88,4 +89,4 @@ export interface CaptureFrameResponse {
     }>;
 }
 
-export type ChannelCallback<T> = (data: T) => void; 
+export type ChannelCallback<T> = (data: T) => void;

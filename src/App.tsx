@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Layout, ConfigProvider, theme } from 'antd';
 import { Screenshot } from '@features/Screenshot';
-import type { CaptureResult, CaptureFrame, CaptureError } from '@electron/types/electron-api';
+import type { CaptureResult, CaptureFrame, CaptureError } from '@electron/types';
 import { useElectron } from '@context/ElectronContext';
 
 interface ScreenshotType {
@@ -13,10 +13,27 @@ interface ScreenshotType {
     width: number;
     height: number;
     isSceneChange?: boolean;
+    size: number;
   };
 }
 
 const { Content } = Layout;
+
+interface PotentialCaptureFrame {
+  buffer: Buffer;
+  metadata: {
+    timestamp: number;
+    format: string;
+    dimensions?: {
+      width: number;
+      height: number;
+    };
+    width?: number;
+    height?: number;
+    size: number;
+    isSceneChange?: boolean;
+  };
+}
 
 const App: React.FC = () => {
   const { api } = useElectron();
@@ -25,23 +42,47 @@ const App: React.FC = () => {
   const [errorState, setErrorState] = useState<Error | null>(null);
   const [captureResult, setCaptureResult] = useState<CaptureResult[] | null>(null);
 
-  const isCaptureFrame = (data: CaptureResult): data is CaptureFrame => {
-    return 'buffer' in data && 'metadata' in data;
+  const isCaptureFrame = (data: unknown): data is CaptureFrame => {
+    const potential = data as PotentialCaptureFrame;
+    return (
+      data !== null &&
+      typeof data === 'object' &&
+      'buffer' in data &&
+      'metadata' in data &&
+      typeof potential.metadata === 'object' &&
+      potential.metadata !== null &&
+      'timestamp' in potential.metadata &&
+      'format' in potential.metadata &&
+      ['jpeg', 'png', 'webp'].includes(potential.metadata.format as string) &&
+      'size' in potential.metadata &&
+      (
+        ('dimensions' in potential.metadata &&
+          typeof potential.metadata.dimensions === 'object' &&
+          'width' in potential.metadata.dimensions &&
+          'height' in potential.metadata.dimensions) ||
+        ('width' in potential.metadata && 'height' in potential.metadata)
+      )
+    );
   };
 
   useEffect(() => {
     const handleCaptureFrame = (data: CaptureFrame | CaptureError) => {
-      if (isCaptureFrame(data)) {
+      if ('buffer' in data && 'metadata' in data) {
+        const format = data.metadata.format as 'jpeg' | 'png' | 'webp';
+
+        const metadata: ScreenshotType['metadata'] = {
+          timestamp: data.metadata.timestamp,
+          format,
+          width: data.metadata.width,
+          height: data.metadata.height,
+          isSceneChange: data.metadata.isSceneChange || false,
+          size: 0
+        };
+
         const newScreenshot: ScreenshotType = {
           id: Date.now().toString(),
           imageData: `data:image/png;base64,${Buffer.from(data.buffer).toString('base64')}`,
-          metadata: {
-            timestamp: data.metadata.timestamp,
-            format: data.metadata.format,
-            width: data.metadata.width,
-            height: data.metadata.height,
-            isSceneChange: data.metadata.isSceneChange || false
-          }
+          metadata
         };
         setScreenshots(prev => [...prev, newScreenshot]);
       }
