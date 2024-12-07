@@ -1,6 +1,6 @@
 import type { ScreenshotConfig } from '@electron/types/electron-api';
 import { Form, InputNumber, Select, Slider, Switch, Typography } from 'antd';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const { Title } = Typography;
 
@@ -8,19 +8,34 @@ interface ScreenshotSettingsProps {
     onSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
 }
 
+const DEFAULT_VALUES: Partial<ScreenshotConfig> = {
+    captureInterval: 1000,
+    format: 'jpeg',
+    quality: 0.8,
+    detectSceneChanges: false,
+    sceneChangeThreshold: 0.1
+};
+
 export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettingsChange }) => {
-    const [form] = Form.useForm<Partial<ScreenshotConfig>>();
+    const [initialValues, setInitialValues] = useState(DEFAULT_VALUES);
+    const mounted = useRef(false);
 
     // Load initial config
     useEffect(() => {
+        mounted.current = true;
+
         const loadConfig = async () => {
             const api = window.electronAPI;
-            if (!api) return;
+            if (!api || !mounted.current) return;
 
             try {
                 const response = await api.getConfig();
-                if (response.success && response.data) {
-                    form.setFieldsValue(response.data);
+                if (response.success && response.data && mounted.current) {
+                    const mergedValues = {
+                        ...DEFAULT_VALUES,
+                        ...response.data
+                    };
+                    setInitialValues(mergedValues);
                 }
             } catch (error) {
                 console.error('Failed to load config:', error);
@@ -28,12 +43,18 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettin
         };
 
         loadConfig();
-    }, [form]);
+
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
 
     // Debounce settings changes
     const debouncedSettingsChange = useCallback(
         (values: Partial<ScreenshotConfig>) => {
-            onSettingsChange(values);
+            if (mounted.current) {
+                onSettingsChange(values);
+            }
         },
         [onSettingsChange]
     );
@@ -43,20 +64,13 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettin
     };
 
     return (
-        <div>
-            <Title level={4}>Screenshot Settings</Title>
+        <Form.Provider>
             <Form
-                form={form}
                 layout="vertical"
                 onValuesChange={handleValuesChange}
-                initialValues={{
-                    captureInterval: 1000,
-                    format: 'jpeg',
-                    quality: 0.8,
-                    detectSceneChanges: false,
-                    sceneChangeThreshold: 0.1
-                }}
+                initialValues={initialValues}
             >
+                <Title level={4}>Screenshot Settings</Title>
                 <Form.Item
                     label="Capture Interval (ms)"
                     name="captureInterval"
@@ -112,24 +126,35 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettin
                 </Form.Item>
 
                 <Form.Item
-                    label="Scene Change Threshold"
-                    name="sceneChangeThreshold"
-                    tooltip="Lower threshold means more sensitive detection"
-                    dependencies={['detectSceneChanges']}
+                    noStyle
+                    shouldUpdate={(prevValues: Partial<ScreenshotConfig>, currentValues: Partial<ScreenshotConfig>) =>
+                        prevValues.detectSceneChanges !== currentValues.detectSceneChanges
+                    }
                 >
-                    <Slider
-                        min={0.1}
-                        max={1}
-                        step={0.1}
-                        disabled={!form.getFieldValue('detectSceneChanges')}
-                        marks={{
-                            0.1: 'Low',
-                            0.5: 'Medium',
-                            1: 'High'
-                        }}
-                    />
+                    {({ getFieldValue }) => {
+                        const detectSceneChanges = getFieldValue('detectSceneChanges');
+                        return (
+                            <Form.Item
+                                label="Scene Change Threshold"
+                                name="sceneChangeThreshold"
+                                tooltip="Lower threshold means more sensitive detection"
+                            >
+                                <Slider
+                                    min={0.1}
+                                    max={1}
+                                    step={0.1}
+                                    disabled={!detectSceneChanges}
+                                    marks={{
+                                        0.1: 'Low',
+                                        0.5: 'Medium',
+                                        1: 'High'
+                                    }}
+                                />
+                            </Form.Item>
+                        );
+                    }}
                 </Form.Item>
             </Form>
-        </div>
+        </Form.Provider>
     );
 }; 

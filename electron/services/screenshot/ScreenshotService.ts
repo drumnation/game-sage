@@ -1,4 +1,4 @@
-import { screen } from 'electron';
+import { screen, systemPreferences } from 'electron';
 import screenshot from 'screenshot-desktop';
 import sharp from 'sharp';
 import { EventEmitter } from 'events';
@@ -83,28 +83,51 @@ export class ScreenshotService extends EventEmitter {
     }
 
     public async start(): Promise<void> {
+        console.log('Starting screenshot service...');
+
         if (this.captureInterval) {
+            console.log('Screenshot service already running');
             return;
         }
 
+        if (process.platform === 'darwin') {
+            const hasScreenCapturePermission = systemPreferences.getMediaAccessStatus('screen');
+            console.log('Screen capture permission status:', hasScreenCapturePermission);
+
+            if (hasScreenCapturePermission !== 'granted') {
+                console.log('Screen capture permission not granted. Please enable in System Preferences > Security & Privacy > Privacy > Screen Recording');
+                throw new Error('Screen capture permission required. Please enable in System Preferences.');
+            }
+        }
+
         try {
-            this.captureInterval = setInterval(async () => {
-                try {
-                    await this.capture();
-                } catch (error) {
+            console.log('Performing initial capture...');
+            await this.capture();
+
+            this.captureInterval = setInterval(() => {
+                console.log(`[${new Date().toISOString()}] Starting scheduled capture...`);
+                this.capture().catch(error => {
+                    console.error('Error during scheduled capture:', error);
                     this.emit('error', error);
-                }
+                });
             }, this.config.captureInterval);
+
+            console.log(`Screenshot service started with interval: ${this.config.captureInterval}ms`);
         } catch (error) {
+            console.error('Failed to start screenshot service:', error);
             this.emit('error', error);
             throw error;
         }
     }
 
     public stop(): void {
+        console.log('Stopping screenshot service...');
         if (this.captureInterval) {
             clearInterval(this.captureInterval);
             this.captureInterval = null;
+            console.log('Screenshot service stopped');
+        } else {
+            console.log('Screenshot service was not running');
         }
     }
 
@@ -120,13 +143,17 @@ export class ScreenshotService extends EventEmitter {
         try {
             const displays = await this.getDisplays();
             const activeDisplays = this.config.activeDisplays || [displays[0].id];
+            console.log('Active displays:', activeDisplays);
+
             const results: CaptureResult[] = [];
 
             for (const display of displays) {
                 if (activeDisplays.includes(display.id)) {
+                    console.log(`Capturing display: ${display.id} (${display.name})`);
                     const result = await this.captureDisplay(display);
                     if (result) {
                         results.push(result);
+                        console.log(`Successfully captured display: ${display.id}`);
                     }
                 }
             }
@@ -141,7 +168,15 @@ export class ScreenshotService extends EventEmitter {
 
     private async captureDisplay(display: DisplayInfo): Promise<CaptureResult | null> {
         try {
-            const buffer = await screenshot({ screen: display.id });
+            const displayId = parseInt(display.id);
+            if (isNaN(displayId)) {
+                throw new Error(`Invalid display ID: ${display.id}`);
+            }
+
+            console.log(`Attempting to capture display ${displayId}...`);
+            const buffer = await screenshot({ screen: displayId });
+            console.log(`Raw capture successful for display ${displayId}`);
+
             const metadata: ScreenshotMetadata = {
                 timestamp: Date.now(),
                 displayId: display.id,
@@ -151,6 +186,7 @@ export class ScreenshotService extends EventEmitter {
             };
 
             const processedBuffer = await this.processImage(buffer);
+            console.log(`Image processing completed for display ${displayId}`);
 
             if (this.config.detectSceneChanges && this.config.sceneChangeThreshold) {
                 const lastFrame = this.lastFrames.get(display.id);

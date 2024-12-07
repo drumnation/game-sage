@@ -5,7 +5,6 @@
   "detectSceneChanges": false,
   "sceneChangeThreshold": 0.1,
   "activeDisplays": [
-    "5",
-    "2"
+    "1"
   ]
 }

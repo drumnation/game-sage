@@ -11,19 +11,25 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({ onDisplaysCh
 
     const loadDisplays = useCallback(async () => {
         const api = window.electronAPI;
-        if (!api) return;
+        if (!api) {
+            console.error('Electron API not available');
+            return;
+        }
 
         try {
+            console.log('Fetching available displays...'); // Debug log
             const response: APIResponse<DisplayInfo[]> = await api.listDisplays();
-            console.log('Displays response:', response); // Debug log
+            console.log('Displays response:', response);
 
             if (response.success && Array.isArray(response.data)) {
+                console.log('Available displays:', response.data); // Debug log
                 setDisplays(response.data);
 
                 // Select primary display by default only if no display is currently selected
                 if (selectedDisplays.length === 0) {
                     const primaryDisplay = response.data.find((d: DisplayInfo) => d.isPrimary);
                     if (primaryDisplay) {
+                        console.log('Selecting primary display:', primaryDisplay); // Debug log
                         const newSelection = [primaryDisplay.id];
                         setSelectedDisplays(newSelection);
                         onDisplaysChange(newSelection);
@@ -41,9 +47,12 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({ onDisplaysCh
 
     useEffect(() => {
         loadDisplays();
-    }, []); // Remove dependency on onDisplaysChange
+        // This is a workaround to prevent infinite re-renders
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleDisplayChange = (newSelection: string[]) => {
+        console.log('Display selection changed:', newSelection); // Debug log
         setSelectedDisplays(newSelection);
         onDisplaysChange(newSelection);
     };
