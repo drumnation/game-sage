@@ -7,6 +7,11 @@ const config: Config.InitialOptions = {
   moduleNameMapper: {
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png|jpg|jpeg)$': '<rootDir>/src/test/__mocks__/fileMock.ts',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@electron/(.*)$': '<rootDir>/electron/$1',
+    '^@atoms/(.*)$': '<rootDir>/src/components/atoms/$1',
+    '^@atoms$': '<rootDir>/src/components/atoms',
+    '^@features/(.*)$': '<rootDir>/src/features/$1',
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

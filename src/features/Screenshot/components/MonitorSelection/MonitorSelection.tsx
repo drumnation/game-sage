@@ -3,8 +3,6 @@ import { Select } from 'antd';
 import type { MonitorSelectionProps } from '../../Screenshot.types';
 import type { DisplayInfo } from '@electron/types';
 
-const { Option } = Select;
-
 export const MonitorSelection: React.FC<MonitorSelectionProps> = ({
     onDisplaysChange,
     isCapturing = false
@@ -80,9 +78,9 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({
             disabled={isCapturing}
         >
             {displays.map(display => (
-                <Option key={display.id} value={display.id}>
+                <Select.Option key={display.id} value={display.id}>
                     {display.name || `Display ${display.id}`} {display.isPrimary ? '(Primary)' : ''}
-                </Option>
+                </Select.Option>
             ))}
         </Select>
     );
