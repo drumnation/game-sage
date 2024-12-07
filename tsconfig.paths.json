@@ -5,14 +5,14 @@
             "@/*": [
                 "src/*"
             ],
-            "@atoms/*": [
-                "src/components/atoms/*"
+            "@atoms": [
+                "src/components/atoms/index"
             ],
-            "@molecules/*": [
-                "src/components/molecules/*"
+            "@molecules": [
+                "src/components/molecules/index"
             ],
-            "@organisms/*": [
-                "src/components/organisms/*"
+            "@organisms": [
+                "src/components/organisms/index"
             ],
             "@features/*": [
                 "src/features/*"

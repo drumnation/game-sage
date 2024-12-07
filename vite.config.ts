@@ -9,9 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@/*': path.resolve(__dirname, 'src/*'),
-      '@atoms/*': path.resolve(__dirname, 'src/components/atoms/*'),
-      '@molecules/*': path.resolve(__dirname, 'src/components/molecules/*'),
-      '@organisms/*': path.resolve(__dirname, 'src/components/organisms/*'),
+      '@atoms': path.resolve(__dirname, 'src/components/atoms/index'),
+      '@molecules': path.resolve(__dirname, 'src/components/molecules/index'),
+      '@organisms': path.resolve(__dirname, 'src/components/organisms/index'),
       '@features/*': path.resolve(__dirname, 'src/features/*'),
       '@services/*': path.resolve(__dirname, 'src/services/*'),
       '@context/*': path.resolve(__dirname, 'src/context/*'),
