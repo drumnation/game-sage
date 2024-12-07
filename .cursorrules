@@ -261,19 +261,20 @@ const pathAliasRules = {
         paths: {
           "@/*": ["src/*"],
           "@atoms/*": ["src/components/atoms/*"],
+          "@components/*": ["src/components/*"],
+          "@electron/*": ["electron/*"],
+          "@features/*": ["src/features/*"],
+          "@hooks/*": ["src/hooks/*"],
+          "@main/*": ["src/main/*"],
           "@molecules/*": ["src/components/molecules/*"],
           "@organisms/*": ["src/components/organisms/*"],
-          "@features/*": ["src/features/*"],
+          "@pages/*": ["src/pages/*"],
+          "@renderer/*": ["src/renderer/*"],
           "@services/*": ["src/services/*"],
-          "@utils/*": ["src/utils/*"],
+          "@store/*": ["src/store/*"],
           "@styles/*": ["src/styles/*"],
           "@test/*": ["src/test/*"],
-          "@hooks/*": ["src/hooks/*"],
-          "@pages/*": ["src/pages/*"],
-          "@store/*": ["src/store/*"],
-          "@main/*": ["src/main/*"],
-          "@renderer/*": ["src/renderer/*"],
-          "@components/*": ["src/components/*"]
+          "@utils/*": ["src/utils/*"],
         }
       },
       vite: {
@@ -281,19 +282,20 @@ const pathAliasRules = {
           alias: {
             "@": "./src",
             "@atoms": "./src/components/atoms",
+            "@components": "./src/components",
+            "@electron": "./electron",
+            "@features": "./src/features",
+            "@hooks": "./src/hooks",
+            "@main": "./src/main",
             "@molecules": "./src/components/molecules",
             "@organisms": "./src/components/organisms",
-            "@features": "./src/features",
+            "@pages": "./src/pages",
+            "@renderer": "./src/renderer",
             "@services": "./src/services",
-            "@utils": "./src/utils",
+            "@store": "./src/store",
             "@styles": "./src/styles",
             "@test": "./src/test",
-            "@hooks": "./src/hooks",
-            "@pages": "./src/pages",
-            "@store": "./src/store",
-            "@main": "./src/main",
-            "@renderer": "./src/renderer",
-            "@components": "./src/components"
+            "@utils": "./src/utils",
           }
         }
       }

@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
-import { ScreenshotManager } from '../../features/Screenshot';
-import { theme } from '../../styles/theme';
-import type { CaptureFrame, CaptureError } from '../../../electron/types/electron-api';
+import { ScreenshotManager } from '@features/Screenshot';
+import { theme } from '@styles/theme';
 
 // Mock electron API
 const mockElectronAPI = {

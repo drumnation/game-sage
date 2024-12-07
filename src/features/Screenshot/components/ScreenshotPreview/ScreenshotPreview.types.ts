@@ -1,4 +1,4 @@
-import type { Screenshot } from '@features/screenshots/types';
+import type { Screenshot } from '@features/Screenshot/Screenshot.types';
 
 export interface ScreenshotPreviewProps {
     screenshot: Screenshot;

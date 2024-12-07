@@ -8,9 +8,59 @@ export interface GameEvent {
     data: unknown;
 }
 
+export interface ScreenshotConfig {
+    captureInterval: number;
+    format: string;
+    quality: number;
+    detectSceneChanges: boolean;
+    sceneChangeThreshold: number;
+}
+
+export interface DisplayInfo {
+    id: string;
+    name: string;
+    bounds: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+}
+
+export interface CaptureResult {
+    buffer: Buffer;
+    metadata: {
+        timestamp: number;
+        format: string;
+        size: number;
+        dimensions: {
+            width: number;
+            height: number;
+        };
+    };
+}
+
 export interface CaptureFrame {
-    imageData: string;
-    metadata: ScreenshotMetadata;
+    buffer: Buffer;
+    metadata: {
+        timestamp: number;
+        displayId: string;
+        width: number;
+        height: number;
+        format: string;
+        isSceneChange?: boolean;
+    };
+}
+
+export interface CaptureError {
+    error: string;
+}
+
+export interface ElectronAPI {
+    on(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
+    off(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
+    updateConfig(config: Partial<ScreenshotConfig>): Promise<void>;
+    getConfig(): Promise<ScreenshotConfig>;
 }
 
 export interface MessagePayload {

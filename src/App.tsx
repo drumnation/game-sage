@@ -25,7 +25,8 @@ const StyledContent = styled(Content)`
 const Title = styled.h1`
   color: ${({ theme }) => theme.colors.text};
   margin: 0;
-  ${({ theme }) => theme.typography.h1};
+  font-size: 2rem;
+  font-weight: 600;
 `;
 
 function App() {
