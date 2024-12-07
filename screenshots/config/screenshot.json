@@ -1,9 +1,9 @@
 {
-  "captureInterval": 1000,
+  "captureInterval": 2000,
   "format": "jpeg",
-  "quality": 80,
-  "detectSceneChanges": false,
-  "sceneChangeThreshold": 0.1,
+  "quality": 0.8,
+  "detectSceneChanges": true,
+  "sceneChangeThreshold": 0.15,
   "activeDisplays": [
     "1"
   ]

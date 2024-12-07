@@ -36,7 +36,6 @@ export const MainPreviewContainer = styled.div`
     justify-content: center;
     padding: 16px;
     background-color: rgba(0, 0, 0, 0.02);
-    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
     border: 2px solid yellow;
 
     img {
@@ -50,7 +49,15 @@ export const GameAdviceContainer = styled.div`
     flex: 1;
     padding: 24px;
     overflow-y: auto;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-top: 1px solid ${({ theme }) => theme.colors.border};
     border: 2px solid orange;
+
+    h2 {
+        margin-bottom: 16px;
+        font-size: 18px;
+        font-weight: 500;
+    }
 
     &::-webkit-scrollbar {
         width: 8px;
@@ -69,60 +76,34 @@ export const GameAdviceContainer = styled.div`
 
 export const TimelineContainer = styled.div`
     height: 80px;
-    padding: 8px 16px;
-    background-color: rgba(0, 0, 0, 0.03);
+    background-color: rgba(0, 0, 0, 0.05);
     border-top: 1px solid ${({ theme }) => theme.colors.border};
+    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+    padding: 16px;
     display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
+    flex-direction: column;
+    gap: 8px;
 
-    &::-webkit-scrollbar {
-        height: 8px;
-    }
-
-    &::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 4px;
+    .MuiSlider-root {
+        padding: 10px 0;
     }
 `;
 
-interface TimelineItemProps {
-    $isSelected?: boolean;
-}
+export const TimelineControls = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 32px;
 
-export const TimelineItem = styled.div<TimelineItemProps>`
-    flex: 0 0 auto;
-    width: 100px;
-    cursor: pointer;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 2px solid ${props => props.$isSelected ? '#1890ff' : 'transparent'};
-    transition: all 0.2s ease;
-
-    &:hover {
-        border-color: #1890ff;
-    }
-
-    img {
-        width: 100%;
-        height: 60px;
-        object-fit: cover;
-    }
-
-    .time {
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
+    .timestamp {
+        font-size: 12px;
         color: ${({ theme }) => theme.colors.textSecondary};
-        background-color: ${props => props.$isSelected ? 'rgba(24, 144, 255, 0.1)' : 'transparent'};
+        min-width: 100px;
+    }
+
+    .controls {
+        display: flex;
+        gap: 8px;
     }
 `;
 

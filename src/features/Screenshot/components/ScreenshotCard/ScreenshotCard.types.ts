@@ -8,6 +8,10 @@ export interface ScreenshotCardProps {
     timestamp: number;
     /** Whether the card is currently selected */
     isSelected?: boolean;
+    /** Whether this frame represents a scene change */
+    isSceneChange?: boolean;
+    /** The calculated scene change score (0-1) */
+    sceneChangeScore?: number;
     /** Optional click handler */
     onClick?: () => void;
 } 
