@@ -42,9 +42,29 @@ function createWindow() {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
     },
     backgroundColor: '#141414',
   })
+
+  // Set security-related HTTP headers
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'",
+          "img-src 'self' data: blob:",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline'"
+        ].join('; '),
+        'X-Content-Type-Options': ['nosniff'],
+        'X-Frame-Options': ['SAMEORIGIN'],
+        'X-XSS-Protection': ['1; mode=block']
+      }
+    });
+  });
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -90,7 +110,7 @@ function setupScreenshotService() {
 
   ipcMain.handle('stop-capture', async () => {
     try {
-      screenshotService?.stop();
+      await screenshotService?.stop();
       return { success: true };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from 'antd';
-import { CameraOutlined } from '@ant-design/icons';
+import { CameraOutlined, PauseCircleOutlined } from '@ant-design/icons';
 
 export interface ScreenshotControlsProps {
     isCapturing: boolean;
@@ -13,13 +13,13 @@ export const ScreenshotControls: React.FC<ScreenshotControlsProps> = ({
 }) => {
     return (
         <Button
-            type="primary"
-            icon={<CameraOutlined />}
+            type={isCapturing ? "default" : "primary"}
+            icon={isCapturing ? <PauseCircleOutlined /> : <CameraOutlined />}
             onClick={onCapture}
-            loading={isCapturing}
+            danger={isCapturing}
             size="large"
         >
-            Capture Screenshot
+            {isCapturing ? 'Stop Capture' : 'Start Capture'}
         </Button>
     );
 };

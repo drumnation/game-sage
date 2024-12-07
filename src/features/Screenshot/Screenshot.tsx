@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Space, message } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Space, App } from 'antd';
 import { ScreenshotControls, MonitorSelection, ScreenshotSettings } from './components';
 import { ScreenshotCard } from './components/ScreenshotCard';
-import type { ScreenshotConfig, CaptureFrame, CaptureError } from '@electron/types/electron-api';
+import type { ScreenshotConfig } from '@electron/types/electron-api';
 import {
     ScreenshotContainer,
     ScreenshotSider,
@@ -19,64 +19,81 @@ interface Screenshot {
     displayId: string;
 }
 
+interface CaptureFrameMetadata {
+    timestamp: number;
+    displayId: string;
+    format: string;
+    width: number;
+    height: number;
+}
+
+interface CaptureFrameData {
+    imageData: string;
+    metadata: CaptureFrameMetadata;
+}
+
 export const Screenshot: React.FC = () => {
     const [selectedDisplays, setSelectedDisplays] = useState<string[]>([]);
     const [isCapturing, setIsCapturing] = useState(false);
     const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+    const { message } = App.useApp();
+    const screenshotCounter = useRef(0);
 
+    // Effect to handle cleanup on unmount
+    useEffect(() => {
+        return () => {
+            const api = window.electronAPI;
+            if (api && isCapturing) {
+                // Ensure we stop capturing on unmount
+                api.stopCapture()
+                    .then(() => {
+                        console.log('Successfully stopped capture on unmount');
+                        setIsCapturing(false);
+                    })
+                    .catch(error => {
+                        console.error('Failed to stop capture on unmount:', error);
+                    });
+            }
+        };
+    }, [isCapturing]);
+
+    // Effect to handle capture frame events
     useEffect(() => {
         const api = window.electronAPI;
         if (!api) return;
 
-        const handleCaptureFrame = (data: CaptureFrame | CaptureError) => {
-            console.log('Received capture frame:', data); // Debug log
+        const handleCaptureFrame = (data: CaptureFrameData) => {
+            console.log('Received capture frame');
 
-            if ('buffer' in data && 'metadata' in data) {
-                // It's a CaptureFrame
-                const frame = data as CaptureFrame;
-                console.log('Frame metadata:', frame.metadata); // Debug log
-                console.log('Buffer type:', typeof frame.buffer); // Debug log
-                console.log('Buffer length:', frame.buffer.length); // Debug log
+            try {
+                const screenshot: Screenshot = {
+                    id: `${data.metadata.timestamp}-${data.metadata.displayId}-${screenshotCounter.current++}`,
+                    imageData: `data:image/jpeg;base64,${data.imageData}`,
+                    timestamp: data.metadata.timestamp,
+                    displayId: data.metadata.displayId
+                };
 
-                try {
-                    const base64String = Buffer.from(frame.buffer).toString('base64');
-                    const screenshot: Screenshot = {
-                        id: `${frame.metadata.timestamp}-${frame.metadata.displayId}`,
-                        imageData: `data:image/${frame.metadata.format};base64,${base64String}`,
-                        timestamp: frame.metadata.timestamp,
-                        displayId: frame.metadata.displayId
-                    };
-
-                    console.log('Created screenshot:', screenshot.id); // Debug log
-                    setScreenshots(prev => {
-                        console.log('Previous screenshots:', prev.length); // Debug log
-                        return [screenshot, ...prev].slice(0, 20);
-                    });
-                } catch (error) {
-                    console.error('Error processing screenshot:', error);
-                    message.error('Failed to process screenshot');
-                }
-            } else {
-                // It's a CaptureError
-                const error = data as CaptureError;
-                console.error('Capture error:', error); // Debug log
-                message.error(`Screenshot capture failed: ${error.message}`);
-            }
-        };
-
-        console.log('Setting up capture frame listener'); // Debug log
-        api.on('capture-frame', handleCaptureFrame);
-        return () => {
-            console.log('Cleaning up capture frame listener'); // Debug log
-            api.off('capture-frame', handleCaptureFrame);
-            if (isCapturing) {
-                api.stopCapture().catch(error => {
-                    console.error('Failed to stop capture on unmount:', error);
+                setScreenshots(prev => {
+                    // Keep only the last 10 screenshots to prevent memory issues
+                    const newScreenshots = [screenshot, ...prev].slice(0, 10);
+                    return newScreenshots;
                 });
-                setIsCapturing(false);
+            } catch (error) {
+                console.error('Error processing screenshot:', error);
+                message.error('Failed to process screenshot');
             }
         };
-    }, [isCapturing]);
+
+        console.log('Setting up capture frame listener');
+        // @ts-expect-error - Type mismatch between Electron IPC event data and our CaptureFrameData type
+        api.on('capture-frame', handleCaptureFrame);
+
+        return () => {
+            console.log('Removing capture frame listener');
+            // @ts-expect-error - Type mismatch between Electron IPC event data and our CaptureFrameData type
+            api.off('capture-frame', handleCaptureFrame);
+        };
+    }, [message]);
 
     const handleDisplaysChange = (displays: string[]) => {
         setSelectedDisplays(displays);
@@ -99,12 +116,15 @@ export const Screenshot: React.FC = () => {
         }
 
         try {
+            const api = window.electronAPI;
+            if (!api) return;
+
             if (isCapturing) {
-                await window.electronAPI?.stopCapture();
+                await api.stopCapture();
                 setIsCapturing(false);
                 message.success('Capture stopped');
             } else {
-                await window.electronAPI?.startCapture();
+                await api.startCapture();
                 setIsCapturing(true);
                 message.success('Capture started');
             }
@@ -115,36 +135,42 @@ export const Screenshot: React.FC = () => {
         }
     };
 
-    console.log('Rendering with screenshots:', screenshots.length); // Debug log
+    console.log('Rendering with screenshots:', screenshots.length);
 
     return (
-        <ScreenshotContainer>
-            <ScreenshotSider>
-                <SettingsPanel>
-                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                        <ScreenshotSettings onSettingsChange={handleSettingsChange} />
-                        <MonitorSelection onDisplaysChange={handleDisplaysChange} />
-                    </Space>
-                </SettingsPanel>
-                <ControlsPanel>
-                    <ScreenshotControls
-                        onCapture={handleCapture}
-                        isCapturing={isCapturing}
-                    />
-                </ControlsPanel>
-            </ScreenshotSider>
-            <ScreenshotContent>
-                <GridContainer>
-                    {screenshots.map(screenshot => (
-                        <ScreenshotCard
-                            key={screenshot.id}
-                            imageUrl={screenshot.imageData}
-                            timestamp={screenshot.timestamp}
+        <App>
+            <ScreenshotContainer>
+                <ScreenshotSider>
+                    <SettingsPanel>
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                            <ScreenshotSettings onSettingsChange={handleSettingsChange} />
+                            <MonitorSelection onDisplaysChange={handleDisplaysChange} />
+                        </Space>
+                    </SettingsPanel>
+                    <ControlsPanel>
+                        <ScreenshotControls
+                            onCapture={handleCapture}
+                            isCapturing={isCapturing}
                         />
-                    ))}
-                </GridContainer>
-            </ScreenshotContent>
-        </ScreenshotContainer>
+                    </ControlsPanel>
+                </ScreenshotSider>
+                <ScreenshotContent>
+                    <GridContainer>
+                        {screenshots.length > 0 ? (
+                            screenshots.map(screenshot => (
+                                <ScreenshotCard
+                                    key={screenshot.id}
+                                    imageUrl={screenshot.imageData}
+                                    timestamp={screenshot.timestamp}
+                                />
+                            ))
+                        ) : (
+                            <div>No screenshots captured yet</div>
+                        )}
+                    </GridContainer>
+                </ScreenshotContent>
+            </ScreenshotContainer>
+        </App>
     );
 };
 

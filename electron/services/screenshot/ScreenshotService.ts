@@ -120,11 +120,13 @@ export class ScreenshotService extends EventEmitter {
         }
     }
 
-    public stop(): void {
+    public async stop(): Promise<void> {
         console.log('Stopping screenshot service...');
         if (this.captureInterval) {
             clearInterval(this.captureInterval);
             this.captureInterval = null;
+            // Clear any stored frames
+            this.lastFrames.clear();
             console.log('Screenshot service stopped');
         } else {
             console.log('Screenshot service was not running');
@@ -153,7 +155,9 @@ export class ScreenshotService extends EventEmitter {
                     const result = await this.captureDisplay(display);
                     if (result) {
                         results.push(result);
-                        console.log(`Successfully captured display: ${display.id}`);
+                        // Emit each frame individually
+                        this.emit('frame', result);
+                        console.log(`Successfully captured and emitted frame for display: ${display.id}`);
                     }
                 }
             }
@@ -213,22 +217,21 @@ export class ScreenshotService extends EventEmitter {
         try {
             const image = sharp(buffer);
 
-            if (this.config.width || this.config.height) {
-                image.resize(this.config.width, this.config.height, {
-                    fit: 'inside',
-                    withoutEnlargement: true
-                });
-            }
+            // Always resize to a reasonable size for preview
+            image.resize(800, 600, {
+                fit: 'inside',
+                withoutEnlargement: true
+            });
 
             switch (this.config.format) {
                 case 'jpeg':
-                    return image.jpeg({ quality: this.config.quality || 80 }).toBuffer();
+                    return image.jpeg({ quality: 60 }).toBuffer();
                 case 'png':
-                    return image.png({ quality: this.config.quality || 80 }).toBuffer();
+                    return image.png({ compressionLevel: 8 }).toBuffer();
                 case 'webp':
-                    return image.webp({ quality: this.config.quality || 80 }).toBuffer();
+                    return image.webp({ quality: 60 }).toBuffer();
                 default:
-                    return image.jpeg({ quality: this.config.quality || 80 }).toBuffer();
+                    return image.jpeg({ quality: 60 }).toBuffer();
             }
         } catch (error) {
             console.error('Failed to process image:', error);
