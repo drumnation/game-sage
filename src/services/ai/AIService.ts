@@ -33,6 +33,10 @@ export class AIService {
     previousResponses?: AIResponse[],
   ): Promise<AIResponse> {
     try {
+      if (!imageBase64) {
+        throw new Error('Invalid image data');
+      }
+
       const promptConfig: PromptConfig = {
         mode,
         gameInfo: this.config.gameInfo,
@@ -43,23 +47,24 @@ export class AIService {
       const { systemPrompt, userPrompt } = PromptManager.composePrompt(promptConfig);
 
       const response = await this.client.chat.completions.create({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o-mini",
         messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          } as const,
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: `${systemPrompt}\n${userPrompt}`
-              },
+              { type: "text", text: userPrompt } as const,
               {
                 type: "image_url",
                 image_url: {
                   url: `data:image/jpeg;base64,${imageBase64}`,
                 }
-              }
+              } as const
             ],
-          },
+          } as const,
         ],
         max_tokens: 300,
         temperature: 0.7,

@@ -1,64 +1,45 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AIState, GameMode, AIResponse, AIError, GameInfo, AISettings } from '../../services/ai/types';
 import { AIService } from '../../services/ai/AIService';
-
-const MAX_CONTEXT_LENGTH = 5;
-const CONTEXT_TIME_WINDOW = 5 * 60 * 1000; // 5 minutes
-const MIN_CONFIDENCE_THRESHOLD = 0.5;
+import type { AIResponse, GameMode, AIState } from '../../services/ai/types';
 
 const initialState: AIState = {
-    responses: [],
-    currentMode: 'tactical',
+    settings: {
+        mode: 'tactical' as GameMode,
+        customInstructions: [],
+        gameInfo: undefined,
+        apiKey: undefined,
+    },
+    currentAnalysis: null,
     isAnalyzing: false,
     error: null,
-    settings: {
-        apiKey: '',
-        gameInfo: {
-            name: '',
-            identifier: '',
-            customInstructions: [],
-        },
-        customInstructions: [],
-    },
+    responses: [],
+    currentMode: 'tactical' as GameMode,
 };
 
 export const analyzeScreenshot = createAsyncThunk<
     AIResponse,
     { imageBase64: string },
-    { rejectValue: AIError; state: { ai: AIState } }
+    { rejectValue: string }
 >(
     'ai/analyzeScreenshot',
-    async ({ imageBase64 }, { rejectWithValue, getState }) => {
+    async ({ imageBase64 }, { getState, rejectWithValue }) => {
         try {
-            const state = getState();
-            const { settings, currentMode, responses } = state.ai;
-
-            if (!settings.apiKey) {
-                throw new Error('OpenAI API key not configured');
-            }
-
+            const state = getState() as { ai: AIState };
             const aiService = new AIService({
-                apiKey: settings.apiKey,
-                gameInfo: settings.gameInfo,
-                customInstructions: settings.customInstructions,
+                apiKey: state.ai.settings.apiKey || '',
+                gameInfo: {
+                    name: 'Game',
+                    identifier: 'game',
+                    customInstructions: state.ai.settings.customInstructions,
+                },
             });
-
-            // Get recent responses for context
-            const recentResponses = responses
-                .filter(r => r.confidence >= MIN_CONFIDENCE_THRESHOLD)
-                .filter(r => (Date.now() - r.timestamp) <= CONTEXT_TIME_WINDOW)
-                .slice(-MAX_CONTEXT_LENGTH);
 
             return await aiService.analyzeScreenshot(
                 imageBase64,
-                currentMode,
-                recentResponses
+                state.ai.settings.mode
             );
         } catch (error) {
-            if (error instanceof Error) {
-                return rejectWithValue(error as AIError);
-            }
-            throw error;
+            return rejectWithValue(error instanceof Error ? error.message : 'Failed to analyze screenshot');
         }
     }
 );
@@ -67,26 +48,22 @@ const aiSlice = createSlice({
     name: 'ai',
     initialState,
     reducers: {
-        setMode: (state, action: PayloadAction<GameMode>) => {
-            if (state.currentMode !== action.payload) {
-                state.currentMode = action.payload;
-                state.responses = []; // Clear responses on mode change
+        updateSettings: (state, action: PayloadAction<Partial<AIState['settings']>>) => {
+            state.settings = { ...state.settings, ...action.payload };
+            if (action.payload.mode) {
+                state.currentMode = action.payload.mode;
             }
         },
-        clearResponses: (state) => {
-            state.responses = [];
+        clearAnalysis: (state) => {
+            state.currentAnalysis = null;
+            state.error = null;
         },
-        updateSettings: (state, action: PayloadAction<Partial<AISettings>>) => {
-            state.settings = {
-                ...state.settings,
-                ...action.payload,
-            };
-        },
-        updateGameInfo: (state, action: PayloadAction<Partial<GameInfo>>) => {
-            state.settings.gameInfo = {
-                ...state.settings.gameInfo,
-                ...action.payload,
-            };
+        updateGameInfo: (state, action: PayloadAction<{ name: string; identifier: string }>) => {
+            if (state.settings.gameInfo) {
+                state.settings.gameInfo = { ...state.settings.gameInfo, ...action.payload };
+            } else {
+                state.settings.gameInfo = { ...action.payload, customInstructions: [] };
+            }
         },
         addCustomInstruction: (state, action: PayloadAction<string>) => {
             state.settings.customInstructions.push(action.payload);
@@ -94,19 +71,10 @@ const aiSlice = createSlice({
         removeCustomInstruction: (state, action: PayloadAction<number>) => {
             state.settings.customInstructions.splice(action.payload, 1);
         },
-        clearCustomInstructions: (state) => {
-            state.settings.customInstructions = [];
+        setMode: (state, action: PayloadAction<GameMode>) => {
+            state.settings.mode = action.payload;
+            state.currentMode = action.payload;
         },
-        pruneResponses: (state) => {
-            const now = Date.now();
-            state.responses = state.responses
-                // Remove old responses outside the time window
-                .filter(response => (now - response.timestamp) <= CONTEXT_TIME_WINDOW)
-                // Keep only high confidence responses
-                .filter(response => response.confidence >= MIN_CONFIDENCE_THRESHOLD)
-                // Keep only the most recent responses up to maxContextLength
-                .slice(-MAX_CONTEXT_LENGTH);
-        }
     },
     extraReducers: (builder) => {
         builder
@@ -116,30 +84,23 @@ const aiSlice = createSlice({
             })
             .addCase(analyzeScreenshot.fulfilled, (state, action) => {
                 state.isAnalyzing = false;
-                state.responses.push(action.payload);
-                // Prune responses after adding new one
-                const now = Date.now();
-                state.responses = state.responses
-                    .filter(response => (now - response.timestamp) <= CONTEXT_TIME_WINDOW)
-                    .filter(response => response.confidence >= MIN_CONFIDENCE_THRESHOLD)
-                    .slice(-MAX_CONTEXT_LENGTH);
+                state.currentAnalysis = action.payload;
+                state.responses = [...state.responses, action.payload];
+                state.error = null;
             })
             .addCase(analyzeScreenshot.rejected, (state, action) => {
                 state.isAnalyzing = false;
-                state.error = action.payload || null;
+                state.error = action.payload || 'Failed to analyze screenshot';
             });
     },
 });
 
 export const {
-    setMode,
-    clearResponses,
     updateSettings,
+    clearAnalysis,
     updateGameInfo,
     addCustomInstruction,
     removeCustomInstruction,
-    clearCustomInstructions,
-    pruneResponses
+    setMode,
 } = aiSlice.actions;
-
 export default aiSlice.reducer; 

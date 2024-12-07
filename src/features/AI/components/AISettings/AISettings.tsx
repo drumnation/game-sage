@@ -20,8 +20,8 @@ export const AISettings: React.FC = () => {
     useEffect(() => {
         form.setFieldsValue({
             apiKey: settings.apiKey,
-            gameName: settings.gameInfo.name,
-            gameIdentifier: settings.gameInfo.identifier,
+            gameName: settings.gameInfo?.name || '',
+            gameIdentifier: settings.gameInfo?.identifier || '',
         });
     }, [form, settings]);
 
@@ -32,8 +32,8 @@ export const AISettings: React.FC = () => {
     const handleGameInfoChange = (values: { gameName?: string; gameIdentifier?: string }) => {
         if (values.gameName || values.gameIdentifier) {
             dispatch(updateGameInfo({
-                name: values.gameName || settings.gameInfo.name,
-                identifier: values.gameIdentifier || settings.gameInfo.identifier,
+                name: values.gameName || settings.gameInfo?.name || '',
+                identifier: values.gameIdentifier || settings.gameInfo?.identifier || '',
             }));
         }
     };
@@ -126,11 +126,8 @@ export const AISettings: React.FC = () => {
                 </Space.Compact>
 
                 <List
-                    size="small"
-                    bordered
                     dataSource={settings.customInstructions}
-                    locale={{ emptyText: 'No custom instructions added yet' }}
-                    renderItem={(item, index) => (
+                    renderItem={(item: string, index: number) => (
                         <List.Item
                             actions={[
                                 <Button
@@ -139,7 +136,6 @@ export const AISettings: React.FC = () => {
                                     danger
                                     icon={<DeleteOutlined />}
                                     onClick={() => handleRemoveInstruction(index)}
-                                    aria-label="Remove instruction"
                                 />
                             ]}
                         >

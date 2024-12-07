@@ -7,7 +7,7 @@ Your AI-powered gaming strategist, commentator, and companion.
 ### Real-time Game Analysis
 
 - Automatic screenshot capture and analysis
-- Powered by OpenAI's GPT-4 Vision API
+- Powered by OpenAI's GPT-4o-mini Vision API
 - Multiple analysis modes:
   - Tactical Analysis: Get real-time strategic advice
   - Commentary: Enjoy professional-style game commentary
@@ -35,29 +35,24 @@ Your AI-powered gaming strategist, commentator, and companion.
 
 - Node.js 18+
 - PNPM package manager
-- OpenAI API key with GPT-4 Vision access
+- OpenAI API key with GPT-4o-mini access
 
 ### Installation
 
-bash
-
+```bash
 # Install dependencies
-
 pnpm install
 
 # Configure environment
-
 cp .env.example .env
-
 # Add your OpenAI API key to .env
 
 # Start development
-
 pnpm dev
-
 ```
 
 ### Configuration
+
 1. Set up your OpenAI API key in the settings
 2. Configure game-specific settings
 3. Choose your preferred analysis mode
@@ -65,12 +60,13 @@ pnpm dev
 ## Development
 
 ### Building
-```bash
+
+bash
 pnpm build
+
 ```
 
 ### Testing
-
 ```bash
 pnpm test
 ```
@@ -82,7 +78,7 @@ The application uses:
 - Electron for cross-platform desktop support
 - React + TypeScript for the frontend
 - Redux Toolkit for state management
-- OpenAI GPT-4 Vision for AI analysis
+- OpenAI GPT-4o-mini for AI analysis
 - Latest OpenAI API standards for optimal performance
 
 ## Contributing
@@ -93,4 +89,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
+```
 ```

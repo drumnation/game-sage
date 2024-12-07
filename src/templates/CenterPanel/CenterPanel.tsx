@@ -1,12 +1,15 @@
 import React from 'react';
-import { ScreenshotPreview } from '../../features/ScreenshotPreview';
+import { ScreenshotPreview, GameAnalysis } from '../../features';
 import type { CenterPanelProps } from './CenterPanel.types';
-import { PanelContainer } from './CenterPanel.styles';
+import { PanelContainer, ContentContainer } from './CenterPanel.styles';
 
 export const CenterPanel: React.FC<CenterPanelProps> = (props) => {
     return (
         <PanelContainer>
-            <ScreenshotPreview {...props} />
+            <ContentContainer>
+                <ScreenshotPreview {...props} />
+                <GameAnalysis />
+            </ContentContainer>
         </PanelContainer>
     );
 }; 

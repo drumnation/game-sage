@@ -1,1 +1,2 @@
-export * from './Screenshot';
+export * from './GameAnalysis';
+export * from './ScreenshotPreview';

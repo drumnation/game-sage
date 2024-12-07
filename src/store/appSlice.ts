@@ -1,25 +1,30 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface AppState {
-  isCapturing: boolean;
+export interface AppState {
+    isInitialized: boolean;
+    error: string | null;
 }
 
 const initialState: AppState = {
-  isCapturing: false,
+    isInitialized: false,
+    error: null,
 };
 
-export const appSlice = createSlice({
-  name: 'app',
-  initialState,
-  reducers: {
-    startCapture: (state) => {
-      state.isCapturing = true;
+const appSlice = createSlice({
+    name: 'app',
+    initialState,
+    reducers: {
+        setInitialized: (state, action: PayloadAction<boolean>) => {
+            state.isInitialized = action.payload;
+        },
+        setError: (state, action: PayloadAction<string | null>) => {
+            state.error = action.payload;
+        },
+        clearError: (state) => {
+            state.error = null;
+        },
     },
-    stopCapture: (state) => {
-      state.isCapturing = false;
-    },
-  },
 });
 
-export const { startCapture, stopCapture } = appSlice.actions;
+export const { setInitialized, setError, clearError } = appSlice.actions;
 export default appSlice.reducer; 

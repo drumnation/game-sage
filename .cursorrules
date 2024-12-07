@@ -216,6 +216,17 @@ ComponentName/
   },
 
   /**
+   * AI Integration
+   */
+  aiIntegration: {
+    rules: [
+      'Use OpenAI API',
+      'Use ChatCompletion API',
+      'use the gpt-4o-mini model'
+    ]
+  },
+
+  /**
    * Design System Integration
    */
   designSystem: {

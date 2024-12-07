@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2024-03-07
+
+### Fixed
+
+- Fixed store exports to prevent hook ambiguity
+- Fixed module resolution for styled-components
+- Improved state synchronization between settings.mode and currentMode
+- Enhanced responses array handling in AI analysis
+- Fixed GameAnalysis component imports
+
 ## [0.3.1] - 2024-03-07
 
 ### Fixed

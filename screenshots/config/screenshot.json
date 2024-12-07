@@ -1,5 +1,5 @@
 {
-  "captureInterval": 2000,
+  "captureInterval": 10000,
   "format": "jpeg",
   "quality": 0.8,
   "detectSceneChanges": true,

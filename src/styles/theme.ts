@@ -1,21 +1,25 @@
-import { DefaultTheme } from 'styled-components';
-
-export const theme: DefaultTheme = {
+export const theme = {
   colors: {
-    primary: '#1890ff',
-    background: '#141414',
-    surface: '#1f1f1f',
-    border: '#303030',
-    hover: '#262626',
-    textPrimary: '#ffffff',
-    textSecondary: 'rgba(255, 255, 255, 0.65)',
+    background: '#1E1E1E',
+    surface: '#252526',
+    primary: '#007ACC',
+    textPrimary: '#FFFFFF',
+    textSecondary: '#CCCCCC',
+    border: '#404040',
+    hover: '#2A2D2E'
   },
-  borderRadius: '4px',
   spacing: {
     xs: '4px',
     sm: '8px',
     md: '16px',
     lg: '24px',
-    xl: '32px',
+    xl: '32px'
   },
-}; 
+  borderRadius: {
+    sm: '4px',
+    md: '8px',
+    lg: '12px'
+  }
+} as const;
+
+export type Theme = typeof theme; 

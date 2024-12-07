@@ -20,10 +20,21 @@ export interface AIResponse {
     confidence: number;
 }
 
+export interface OpenAIErrorResponse {
+    status: number;
+    data: {
+        error: {
+            code: string;
+            message?: string;
+        };
+    };
+}
+
 export interface AIError extends Error {
     code: string;
     status: number;
     retryable: boolean;
+    response?: OpenAIErrorResponse;
 }
 
 export interface AISettings {
@@ -33,9 +44,15 @@ export interface AISettings {
 }
 
 export interface AIState {
+    settings: {
+        apiKey?: string;
+        mode: GameMode;
+        customInstructions: string[];
+        gameInfo?: GameInfo;
+    };
+    currentAnalysis: AIResponse | null;
+    isAnalyzing: boolean;
+    error: string | null;
     responses: AIResponse[];
     currentMode: GameMode;
-    isAnalyzing: boolean;
-    error: AIError | null;
-    settings: AISettings;
 } 

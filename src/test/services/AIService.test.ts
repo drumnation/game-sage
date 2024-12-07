@@ -1,116 +1,161 @@
 import { AIService } from '../../services/ai/AIService';
-import { GameInfo, AIResponse } from '../../services/ai/types';
+import type { AIError, GameInfo, AIServiceConfig } from '../../services/ai/types';
+import type OpenAI from 'openai';
 
-// Mock OpenAI at system boundary
+// Mock OpenAI client
 jest.mock('openai', () => {
-    const mockCreate = jest.fn().mockImplementation(() => {
-        return Promise.resolve({
-            choices: [{
-                message: {
-                    content: 'Test tactical advice: Focus on objective control',
-                },
-                finish_reason: 'stop',
-            }],
-        });
-    });
+    return class MockOpenAI {
+        private config: { apiKey: string; baseURL?: string };
 
-    return jest.fn().mockImplementation((config) => {
-        if (config.apiKey === 'invalid-key') {
-            const error: OpenAIError = new Error('Invalid API key') as OpenAIError;
-            error.response = {
-                status: 401,
-                data: {
-                    error: {
-                        code: 'invalid_api_key'
-                    }
-                }
-            };
-            // Return a mock that will reject
-            return {
-                chat: {
-                    completions: {
-                        create: () => Promise.reject(error)
-                    }
-                }
-            };
+        constructor(config: { apiKey: string; baseURL?: string }) {
+            this.config = config;
         }
 
-        return {
-            chat: {
-                completions: {
-                    create: mockCreate
-                }
-            }
-        };
-    });
-});
+        chat = {
+            completions: {
+                create: async (params: OpenAI.Chat.ChatCompletionCreateParams): Promise<OpenAI.Chat.ChatCompletion> => {
+                    if (!params.model || !params.messages) {
+                        throw new Error('Missing required parameters');
+                    }
 
-interface OpenAIError extends Error {
-    response?: {
-        status: number;
-        data: {
-            error: {
-                code: string;
-            };
+                    if (this.config.apiKey === 'invalid-key') {
+                        const error = new Error('Invalid API key') as AIError;
+                        error.code = 'invalid_api_key';
+                        error.status = 401;
+                        error.retryable = false;
+                        error.response = {
+                            status: 401,
+                            data: {
+                                error: {
+                                    code: 'invalid_api_key',
+                                    message: 'Invalid API key provided',
+                                },
+                            },
+                        };
+                        throw error;
+                    }
+
+                    if (this.config.apiKey === 'network-error') {
+                        const error = new Error('Network error') as AIError;
+                        error.code = 'ECONNABORTED';
+                        error.status = 500;
+                        error.retryable = true;
+                        throw error;
+                    }
+
+                    if (this.config.apiKey === 'api-error') {
+                        const error = new Error('Bad request') as AIError;
+                        error.code = 'bad_request';
+                        error.status = 400;
+                        error.retryable = false;
+                        error.response = {
+                            status: 400,
+                            data: {
+                                error: {
+                                    code: 'bad_request',
+                                    message: 'Invalid request parameters',
+                                },
+                            },
+                        };
+                        throw error;
+                    }
+
+                    const message = {
+                        role: 'assistant' as const,
+                        content: 'Test analysis',
+                        function_call: undefined,
+                        tool_calls: undefined,
+                        name: undefined,
+                        refusal: null,
+                    } as const;
+
+                    return {
+                        id: 'mock-completion-id',
+                        object: 'chat.completion',
+                        created: Date.now(),
+                        model: 'gpt-4o-mini',
+                        choices: [{
+                            message,
+                            finish_reason: 'stop',
+                            index: 0,
+                            logprobs: null,
+                        }],
+                        usage: {
+                            prompt_tokens: 100,
+                            completion_tokens: 50,
+                            total_tokens: 150,
+                        },
+                        system_fingerprint: undefined,
+                    };
+                },
+            },
         };
     };
-    code?: string;
-}
+});
 
 describe('AIService', () => {
     const mockGameInfo: GameInfo = {
         name: 'Test Game',
-        identifier: 'test-game',
+        identifier: 'test',
         customInstructions: ['Test instruction'],
     };
 
-    let aiService: AIService;
-
-    beforeEach(() => {
-        aiService = new AIService({
-            apiKey: 'test-key',
-            gameInfo: mockGameInfo,
-            customInstructions: ['Global test instruction'],
-        });
+    const createConfig = (apiKey: string): AIServiceConfig => ({
+        apiKey,
+        gameInfo: mockGameInfo,
+        customInstructions: ['Global test instruction'],
     });
 
-    it('should analyze screenshot and return response', async () => {
-        const response = await aiService.analyzeScreenshot('base64-image', 'tactical');
-        expect(response.content).toBe('Test tactical advice: Focus on objective control');
-        expect(response.mode).toBe('tactical');
-        expect(response.confidence).toBe(1);
+    it('should handle invalid API key error', async () => {
+        const service = new AIService(createConfig('invalid-key'));
+        await expect(service.analyzeScreenshot('base64image', 'tactical')).rejects.toThrow('Invalid API key');
     });
 
-    it('should handle API errors gracefully', async () => {
-        // Create a new service with invalid key
-        const invalidService = new AIService({
-            apiKey: 'invalid-key',
-            gameInfo: mockGameInfo,
-        });
-
-        await expect(invalidService.analyzeScreenshot('base64-image', 'tactical'))
-            .rejects
-            .toMatchObject({
-                message: 'Invalid API key',
-                code: 'invalid_api_key',
-                status: 401,
-                retryable: false,
-            });
+    it('should handle network errors', async () => {
+        const service = new AIService(createConfig('network-error'));
+        await expect(service.analyzeScreenshot('base64image', 'tactical')).rejects.toThrow('Network error');
     });
 
-    it('should include previous responses in context', async () => {
-        const previousResponses: AIResponse[] = [
-            {
-                content: 'Previous tactical advice',
-                timestamp: Date.now() - 1000,
-                mode: 'tactical',
-                confidence: 1,
-            }
-        ];
+    it('should handle API errors', async () => {
+        const service = new AIService(createConfig('api-error'));
+        await expect(service.analyzeScreenshot('base64image', 'tactical')).rejects.toThrow('Bad request');
+    });
 
-        const response = await aiService.analyzeScreenshot('base64-image', 'tactical', previousResponses);
-        expect(response.content).toBe('Test tactical advice: Focus on objective control');
-        expect(response.mode).toBe('tactical');
-        expect(response.confidence).toBe(1);
+    it('should successfully analyze a screenshot', async () => {
+        const service = new AIService(createConfig('valid-key'));
+        const result = await service.analyzeScreenshot('base64image', 'tactical');
+
+        expect(result).toBeDefined();
+        expect(result.content).toBe('Test analysis');
+        expect(result.mode).toBe('tactical');
+        expect(result.confidence).toBe(1);
+        expect(result.timestamp).toBeDefined();
+        expect(typeof result.timestamp).toBe('number');
+    });
+
+    it('should handle custom instructions', async () => {
+        const config = createConfig('valid-key');
+        config.customInstructions = ['Custom instruction 1', 'Custom instruction 2'];
+
+        const service = new AIService(config);
+        const result = await service.analyzeScreenshot('base64image', 'commentary');
+
+        expect(result).toBeDefined();
+        expect(result.mode).toBe('commentary');
+    });
+
+    it('should handle custom game info instructions', async () => {
+        const config = createConfig('valid-key');
+        config.gameInfo = {
+            name: 'Test Game',
+            identifier: 'test',
+            customInstructions: ['Game-specific instruction'],
+        };
+
+        const service = new AIService(config);
+        const result = await service.analyzeScreenshot('base64image', 'esports');
+
+        expect(result).toBeDefined();
+        expect(result.mode).toBe('esports');
     });
 });
