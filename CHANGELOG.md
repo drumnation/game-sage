@@ -2,35 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - 2024-01-20
-
-### Added
-
-- Comprehensive test suite for core functionality
-  - Unit tests for ScreenshotService and StorageService
-  - Component tests for ScreenshotManager
-  - Integration tests for Electron IPC communication
-- Test fixtures and utilities
-  - Test image generation script
-  - Mock implementations for Electron IPC
-  - Custom test utilities for React components
-- Performance and memory management tests
-- Scene change detection with configurable thresholds
-- Error handling and recovery mechanisms
-
-### Fixed
-
-- Memory leaks in screenshot capture process
-- Proper cleanup of resources on component unmount
-- Type safety issues in IPC communication
-- Linter errors and code style consistency
+## [0.3.0] - 2024-01-XX
 
 ### Changed
 
-- Improved test organization and structure
-- Enhanced error messaging and user feedback
-- Optimized screenshot capture performance
-- Updated component documentation
+- Updated OpenAI Vision API integration to use latest gpt-4o-mini model
+- Simplified message structure for better API compatibility
+- Improved conversation context handling in prompts
+- Enhanced error handling for API responses
+
+## [0.2.0] - 2024-01-XX
+
+### Added
+
+- OpenAI Vision API Integration
+  - Implemented GPT-4 Vision API for real-time gameplay analysis
+  - Added secure API key management
+  - Created type-safe API response handling
+
+- Prompt Management System
+  - Added support for multiple analysis modes (tactical, commentary, e-sports)
+  - Implemented dynamic prompt templates with game-specific customization
+  - Created conversation context management for continuous analysis
+
+- Error Handling & Recovery
+  - Added comprehensive error handling for API failures
+  - Implemented automatic retry mechanisms for transient errors
+  - Added error reporting and user feedback
+
+- State Management
+  - Integrated Redux Toolkit for AI response management
+  - Added conversation history tracking
+  - Implemented game-specific state persistence
+
+### Changed
+
+- Refactored screenshot analysis pipeline to support AI integration
+- Updated testing framework to support API mocking
+- Enhanced type system for better API integration
+
+### Fixed
+
+- Improved error handling for API timeouts and failures
+- Fixed memory leaks in long-running analysis sessions
+- Resolved race conditions in concurrent API calls
 
 ## [0.1.0] - 2024-01-15
 

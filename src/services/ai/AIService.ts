@@ -31,16 +31,20 @@ export class AIService {
   ): Promise<AIResponse> {
     try {
       const response = await this.client.chat.completions.create({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o-mini",
         messages: [
-          { role: 'system', content: template.systemPrompt },
-          ...(conversationContext?.map(msg => ({ role: 'assistant' as const, content: msg })) || []),
           {
-            role: 'user',
+            role: "user",
             content: [
-              { type: 'text', text: template.userPrompt },
               {
-                type: 'image_url',
+                type: "text",
+                text: `${template.systemPrompt}\n${template.userPrompt}${conversationContext?.length
+                    ? '\nPrevious context:\n' + conversationContext.join('\n')
+                    : ''
+                  }`
+              },
+              {
+                type: "image_url",
                 image_url: {
                   url: `data:image/jpeg;base64,${imageBase64}`,
                 }

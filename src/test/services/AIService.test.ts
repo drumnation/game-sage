@@ -5,7 +5,7 @@ import { GameInfo, PromptTemplate } from '../../services/ai/types';
 jest.mock('openai', () => {
     const mockCreate = jest.fn().mockImplementation(({ messages }) => {
         // Simulate API error for invalid key
-        if (messages[0].content.includes('invalid-key')) {
+        if (messages[0].content[0].text.includes('invalid-key')) {
             throw {
                 message: 'Invalid API key',
                 response: {

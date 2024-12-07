@@ -1,74 +1,94 @@
-# Game Sage
+# GameSage
 
-A desktop application for intelligent game screenshot management and analysis.
+Your AI-powered gaming strategist, commentator, and companion.
 
 ## Features
 
-- Automated screenshot capture with configurable intervals
-- Scene change detection to avoid duplicate screenshots
-- Real-time preview of captured screenshots
-- Memory-efficient processing of high-resolution images
-- Error handling and recovery for capture failures
-- Configurable capture settings
-  - Capture interval (1-10 seconds)
-  - Scene change detection threshold
-  - Image format and quality
+### Real-time Game Analysis
 
-## Development
+- Automatic screenshot capture and analysis
+- Powered by OpenAI's latest gpt-4o-mini model
+- Multiple analysis modes:
+  - Tactical Analysis: Get real-time strategic advice
+  - Commentary: Enjoy professional-style game commentary
+  - E-Sports Cast: Experience your gameplay through an e-sports lens
+
+### Smart Context Management
+
+- Maintains conversation history for coherent analysis
+- Game-specific customization options
+- Adaptive response system based on gameplay context
+- Streamlined prompt handling for better API compatibility
+
+### Robust Architecture
+
+- Efficient screenshot management
+- Secure API key handling
+- Comprehensive error handling and recovery
+- State-of-the-art performance optimization
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js 18+
 - PNPM package manager
-- Electron for desktop app functionality
+- OpenAI API key with GPT-4 Vision access
 
-### Setup
+### Installation
 
-```bash
+bash
+
 # Install dependencies
+
 pnpm install
 
-# Start development server
+# Configure environment
+
+cp .env.example .env
+
+# Add your OpenAI API key to .env
+
+# Start development
+
 pnpm dev
 
-# Run tests
-pnpm test
+```
 
-# Build for production
+### Configuration
+1. Set up your OpenAI API key in the settings
+2. Configure game-specific settings
+3. Choose your preferred analysis mode
+
+## Development
+
+### Building
+```bash
 pnpm build
 ```
 
 ### Testing
 
-The project includes comprehensive test coverage:
-
-- Unit tests for core services (ScreenshotService, StorageService)
-- Component tests with React Testing Library
-- Integration tests for Electron IPC communication
-- Performance and memory management tests
-
-### Project Structure
-
-```
-src/
-├── components/          # React components
-│   └── Screenshot/     # Screenshot-related components
-├── electron/           # Electron main process code
-│   └── services/      # Core services
-├── styles/            # Global styles and theme
-└── test/             # Test files
-    ├── services/     # Service tests
-    └── components/   # Component tests
+```bash
+pnpm test
 ```
 
-### Contributing
+### Architecture
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+The application uses:
+
+- Electron for cross-platform desktop support
+- React + TypeScript for the frontend
+- Redux Toolkit for state management
+- OpenAI GPT-4 Vision for AI analysis
+- Latest OpenAI API standards for optimal performance
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+```
