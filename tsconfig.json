@@ -41,8 +41,33 @@
       "@services/*": [
         "src/services/*"
       ],
+      "@styles/*": [
+        "src/styles/*"
+      ],
+      "@test/*": [
+        "src/test/*"
+      ],
       "@utils/*": [
         "src/utils/*"
+      ],
+      // Additional needed aliases
+      "@hooks/*": [
+        "src/hooks/*"
+      ],
+      "@pages/*": [
+        "src/pages/*"
+      ],
+      "@store/*": [
+        "src/store/*"
+      ],
+      "@main/*": [
+        "src/main/*"
+      ],
+      "@renderer/*": [
+        "src/renderer/*"
+      ],
+      "@components/*": [
+        "src/components/*"
       ]
     }
   },

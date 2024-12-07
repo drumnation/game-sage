@@ -217,7 +217,15 @@ const pathAliasRules = {
     "@organisms/*": "src/components/organisms/*", // Atomic components - complex UI sections
     "@features/*": "src/features/*",           // Feature modules
     "@services/*": "src/services/*",           // Service layer
-    "@utils/*": "src/utils/*"                  // Utility functions and helpers
+    "@utils/*": "src/utils/*",                 // Utility functions and helpers
+    "@styles/*": "src/styles/*",               // Global styles and theme
+    "@test/*": "src/test/*",                  // Test utilities and helpers
+    "@hooks/*": "src/hooks/*",                // Shared hooks
+    "@pages/*": "src/pages/*",                // Page components
+    "@store/*": "src/store/*",                // Redux store
+    "@main/*": "src/main/*",                  // Electron main process
+    "@renderer/*": "src/renderer/*",           // Electron renderer process
+    "@components/*": "src/components/*"        // Shared component utilities
   },
 
   usageGuidelines: [
@@ -257,7 +265,15 @@ const pathAliasRules = {
           "@organisms/*": ["src/components/organisms/*"],
           "@features/*": ["src/features/*"],
           "@services/*": ["src/services/*"],
-          "@utils/*": ["src/utils/*"]
+          "@utils/*": ["src/utils/*"],
+          "@styles/*": ["src/styles/*"],
+          "@test/*": ["src/test/*"],
+          "@hooks/*": ["src/hooks/*"],
+          "@pages/*": ["src/pages/*"],
+          "@store/*": ["src/store/*"],
+          "@main/*": ["src/main/*"],
+          "@renderer/*": ["src/renderer/*"],
+          "@components/*": ["src/components/*"]
         }
       },
       vite: {
@@ -269,7 +285,15 @@ const pathAliasRules = {
             "@organisms": "./src/components/organisms",
             "@features": "./src/features",
             "@services": "./src/services",
-            "@utils": "./src/utils"
+            "@utils": "./src/utils",
+            "@styles": "./src/styles",
+            "@test": "./src/test",
+            "@hooks": "./src/hooks",
+            "@pages": "./src/pages",
+            "@store": "./src/store",
+            "@main": "./src/main",
+            "@renderer": "./src/renderer",
+            "@components": "./src/components"
           }
         }
       }
@@ -285,6 +309,13 @@ src/
   features/      # Feature-specific code
   services/      # Business logic and API calls
   utils/         # Helper functions and utilities
+  hooks/         # Shared hooks
+  pages/         # Page components
+  store/         # Redux store
+  main/          # Electron main process
+  renderer/      # Electron renderer process
+  styles/        # Global styles
+  test/          # Test utilities
   `
 };
 
