@@ -1,12 +1,14 @@
-import type { ElectronAPI } from '../../../electron/types/electron-api';
+import type { ElectronAPI } from '@electron/types/electron-api';
 
 export const mockElectronAPI: ElectronAPI = {
     on: jest.fn(),
     off: jest.fn(),
-    updateConfig: jest.fn().mockResolvedValue(undefined),
-    getConfig: jest.fn().mockResolvedValue({ captureInterval: 1000 }),
-    captureNow: jest.fn().mockResolvedValue(undefined),
-    listDisplays: jest.fn().mockResolvedValue([]),
-    startCapture: jest.fn().mockResolvedValue(undefined),
-    stopCapture: jest.fn().mockResolvedValue(undefined)
+    removeAllListeners: jest.fn(),
+    setMaxListeners: jest.fn(),
+    updateConfig: jest.fn().mockResolvedValue({ success: true }),
+    getConfig: jest.fn().mockResolvedValue({ success: true, data: { captureInterval: 1000 } }),
+    captureNow: jest.fn().mockResolvedValue({ success: true }),
+    listDisplays: jest.fn().mockResolvedValue({ success: true, data: [] }),
+    startCapture: jest.fn().mockResolvedValue({ success: true }),
+    stopCapture: jest.fn().mockResolvedValue({ success: true }),
 }; 

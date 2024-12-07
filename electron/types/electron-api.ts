@@ -55,6 +55,8 @@ export interface APIResponse<T> {
 export interface ElectronAPI {
     on(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
     off(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
+    removeAllListeners(channel: string): void;
+    setMaxListeners(n: number): void;
     updateConfig(config: PartialScreenshotConfig): Promise<APIResponse<void>>;
     getConfig(): Promise<APIResponse<ScreenshotConfig>>;
     captureNow(): Promise<APIResponse<CaptureResult[]>>;

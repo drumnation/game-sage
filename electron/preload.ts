@@ -42,6 +42,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('get-screenshot-config'),
   listDisplays: () => ipcRenderer.invoke('list-displays'),
 
+  // Event Management
+  setMaxListeners: (n: number) => {
+    ipcRenderer.setMaxListeners(n);
+  },
+  removeAllListeners: (channel: ValidChannel) => {
+    if (['capture-frame', 'game-event', 'main-process-message', 'shortcut-action'].includes(channel)) {
+      ipcRenderer.removeAllListeners(channel);
+    }
+  },
+
   // Shortcuts Management
   updateShortcuts: (config: Partial<ShortcutConfig>) =>
     ipcRenderer.invoke('update-shortcuts', config),
