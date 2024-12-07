@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2024-03-07
+
+### Fixed
+
+- Fixed TypeScript errors in AIService tests
+- Improved type safety by removing usage of 'any' type
+- Updated prompt template types to use ComposedPrompt interface
+- Fixed action payload type in useAI hook
+
 ## [0.3.0] - 2024-01-XX
 
 ### Changed

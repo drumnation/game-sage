@@ -14,8 +14,8 @@ export const useAI = () => {
   } = useSelector((state: RootState) => state.ai);
 
   const analyze = useCallback((imageBase64: string) => {
-    dispatch(analyzeScreenshot({ imageBase64, mode: currentMode }));
-  }, [dispatch, currentMode]);
+    dispatch(analyzeScreenshot({ imageBase64 }));
+  }, [dispatch]);
 
   const changeMode = useCallback((mode: GameMode) => {
     dispatch(setMode(mode));

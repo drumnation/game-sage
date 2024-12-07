@@ -7,7 +7,7 @@ Your AI-powered gaming strategist, commentator, and companion.
 ### Real-time Game Analysis
 
 - Automatic screenshot capture and analysis
-- Powered by OpenAI's latest gpt-4o-mini model
+- Powered by OpenAI's GPT-4 Vision API
 - Multiple analysis modes:
   - Tactical Analysis: Get real-time strategic advice
   - Commentary: Enjoy professional-style game commentary
@@ -18,14 +18,16 @@ Your AI-powered gaming strategist, commentator, and companion.
 - Maintains conversation history for coherent analysis
 - Game-specific customization options
 - Adaptive response system based on gameplay context
-- Streamlined prompt handling for better API compatibility
+- Type-safe prompt management system
+- Efficient state persistence with Redux
 
 ### Robust Architecture
 
 - Efficient screenshot management
-- Secure API key handling
+- Secure API key handling with Redux persist
 - Comprehensive error handling and recovery
 - State-of-the-art performance optimization
+- Full TypeScript support with strict type checking
 
 ## Getting Started
 

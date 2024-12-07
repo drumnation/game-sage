@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
-import { AIServiceConfig, AIResponse, PromptTemplate, AIError } from './types';
+import { AIServiceConfig, AIResponse, AIError, GameMode } from './types';
+import { PromptManager, PromptConfig } from './PromptManager';
 
 interface OpenAIError {
   response?: {
@@ -16,32 +17,40 @@ interface OpenAIError {
 
 export class AIService {
   private client: OpenAI;
+  private config: AIServiceConfig;
 
   constructor(config: AIServiceConfig) {
     this.client = new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.baseURL,
     });
+    this.config = config;
   }
 
   async analyzeScreenshot(
     imageBase64: string,
-    template: PromptTemplate,
-    conversationContext?: string[]
+    mode: GameMode,
+    previousResponses?: AIResponse[],
   ): Promise<AIResponse> {
     try {
+      const promptConfig: PromptConfig = {
+        mode,
+        gameInfo: this.config.gameInfo,
+        customInstructions: this.config.customInstructions,
+        previousResponses,
+      };
+
+      const { systemPrompt, userPrompt } = PromptManager.composePrompt(promptConfig);
+
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4-vision-preview",
         messages: [
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: `${template.systemPrompt}\n${template.userPrompt}${conversationContext?.length
-                    ? '\nPrevious context:\n' + conversationContext.join('\n')
-                    : ''
-                  }`
+                text: `${systemPrompt}\n${userPrompt}`
               },
               {
                 type: "image_url",
@@ -52,30 +61,26 @@ export class AIService {
             ],
           },
         ],
-        max_tokens: template.maxTokens || 300,
-        temperature: template.temperature || 0.7,
+        max_tokens: 300,
+        temperature: 0.7,
       });
 
-      return {
+      const aiResponse: AIResponse = {
         content: response.choices[0].message.content || '',
         timestamp: Date.now(),
-        mode: template.mode,
+        mode,
         confidence: response.choices[0].finish_reason === 'stop' ? 1 : 0.5,
       };
-    } catch (error) {
-      if (error && typeof error === 'object' && 'message' in error) {
-        throw this.handleError(error as OpenAIError);
-      }
-      throw new Error('Unknown error occurred');
-    }
-  }
 
-  private handleError(error: OpenAIError): AIError {
-    const aiError: AIError = new Error(error.message) as AIError;
-    aiError.code = error.response?.data?.error?.code || 'UNKNOWN_ERROR';
-    aiError.status = error.response?.status || 500;
-    const status = error.response?.status ?? 500;
-    aiError.retryable = status >= 500 || error.code === 'ECONNABORTED';
-    return aiError;
+      return aiResponse;
+    } catch (error) {
+      const err = error as OpenAIError;
+      const status = err.response?.status || 500;
+      const aiError = new Error(err.message) as AIError;
+      aiError.code = err.response?.data?.error?.code || err.code || 'unknown';
+      aiError.status = status;
+      aiError.retryable = status >= 500 || err.code === 'ECONNABORTED';
+      throw aiError;
+    }
   }
 } 

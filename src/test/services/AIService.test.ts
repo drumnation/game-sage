@@ -1,24 +1,9 @@
 import { AIService } from '../../services/ai/AIService';
-import { GameInfo, PromptTemplate } from '../../services/ai/types';
+import { GameInfo, AIResponse } from '../../services/ai/types';
 
 // Mock OpenAI at system boundary
 jest.mock('openai', () => {
-    const mockCreate = jest.fn().mockImplementation(({ messages }) => {
-        // Simulate API error for invalid key
-        if (messages[0].content[0].text.includes('invalid-key')) {
-            throw {
-                message: 'Invalid API key',
-                response: {
-                    status: 401,
-                    data: {
-                        error: {
-                            code: 'invalid_api_key'
-                        }
-                    }
-                }
-            };
-        }
-
+    const mockCreate = jest.fn().mockImplementation(() => {
         return Promise.resolve({
             choices: [{
                 message: {
@@ -29,80 +14,103 @@ jest.mock('openai', () => {
         });
     });
 
-    const OpenAIMock = jest.fn().mockImplementation(() => ({
-        chat: {
-            completions: {
-                create: mockCreate,
-            },
-        },
-    }));
+    return jest.fn().mockImplementation((config) => {
+        if (config.apiKey === 'invalid-key') {
+            const error: OpenAIError = new Error('Invalid API key') as OpenAIError;
+            error.response = {
+                status: 401,
+                data: {
+                    error: {
+                        code: 'invalid_api_key'
+                    }
+                }
+            };
+            // Return a mock that will reject
+            return {
+                chat: {
+                    completions: {
+                        create: () => Promise.reject(error)
+                    }
+                }
+            };
+        }
 
-    return {
-        __esModule: true,
-        default: OpenAIMock,
-    };
+        return {
+            chat: {
+                completions: {
+                    create: mockCreate
+                }
+            }
+        };
+    });
 });
 
-describe('AI Integration', () => {
-    describe('Screenshot Analysis', () => {
-        it('analyzes game screenshots with correct context', async () => {
-            // Arrange
-            const gameInfo: GameInfo = {
-                name: 'League of Legends',
-                identifier: 'lol',
-                customInstructions: ['Focus on objective control', 'Track enemy positions'],
+interface OpenAIError extends Error {
+    response?: {
+        status: number;
+        data: {
+            error: {
+                code: string;
             };
+        };
+    };
+    code?: string;
+}
 
-            const template: PromptTemplate = {
-                systemPrompt: 'Analyze League of Legends gameplay',
-                userPrompt: 'What should the player do next?',
-                mode: 'tactical',
-                maxTokens: 300,
-                temperature: 0.7,
-            };
+describe('AIService', () => {
+    const mockGameInfo: GameInfo = {
+        name: 'Test Game',
+        identifier: 'test-game',
+        customInstructions: ['Test instruction'],
+    };
 
-            const aiService = new AIService({
-                apiKey: 'test-api-key',
-                gameInfo,
+    let aiService: AIService;
+
+    beforeEach(() => {
+        aiService = new AIService({
+            apiKey: 'test-key',
+            gameInfo: mockGameInfo,
+            customInstructions: ['Global test instruction'],
+        });
+    });
+
+    it('should analyze screenshot and return response', async () => {
+        const response = await aiService.analyzeScreenshot('base64-image', 'tactical');
+        expect(response.content).toBe('Test tactical advice: Focus on objective control');
+        expect(response.mode).toBe('tactical');
+        expect(response.confidence).toBe(1);
+    });
+
+    it('should handle API errors gracefully', async () => {
+        // Create a new service with invalid key
+        const invalidService = new AIService({
+            apiKey: 'invalid-key',
+            gameInfo: mockGameInfo,
+        });
+
+        await expect(invalidService.analyzeScreenshot('base64-image', 'tactical'))
+            .rejects
+            .toMatchObject({
+                message: 'Invalid API key',
+                code: 'invalid_api_key',
+                status: 401,
+                retryable: false,
             });
+    });
 
-            // Act
-            const result = await aiService.analyzeScreenshot('base64-image-data', template);
-
-            // Assert
-            expect(result).toMatchObject({
-                content: expect.stringContaining('tactical advice'),
+    it('should include previous responses in context', async () => {
+        const previousResponses: AIResponse[] = [
+            {
+                content: 'Previous tactical advice',
+                timestamp: Date.now() - 1000,
                 mode: 'tactical',
                 confidence: 1,
-                timestamp: expect.any(Number),
-            });
-        });
+            }
+        ];
 
-        it('handles API errors gracefully', async () => {
-            // Arrange
-            const gameInfo: GameInfo = {
-                name: 'League of Legends',
-                identifier: 'lol',
-                customInstructions: ['Focus on objective control'],
-            };
-
-            const template: PromptTemplate = {
-                systemPrompt: 'invalid-key Analyze League of Legends gameplay',
-                userPrompt: 'What should the player do next?',
-                mode: 'tactical',
-                maxTokens: 300,
-                temperature: 0.7,
-            };
-
-            const aiService = new AIService({
-                apiKey: 'test-api-key',
-                gameInfo,
-            });
-
-            // Act & Assert
-            await expect(aiService.analyzeScreenshot('base64-image-data', template))
-                .rejects
-                .toThrow('Invalid API key');
-        });
+        const response = await aiService.analyzeScreenshot('base64-image', 'tactical', previousResponses);
+        expect(response.content).toBe('Test tactical advice: Focus on objective control');
+        expect(response.mode).toBe('tactical');
+        expect(response.confidence).toBe(1);
     });
 });

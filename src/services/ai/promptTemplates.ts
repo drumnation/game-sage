@@ -1,4 +1,5 @@
-import { PromptTemplate, GameMode, GameInfo } from './types';
+import { GameMode, GameInfo } from './types';
+import { ComposedPrompt } from './PromptManager';
 
 const buildSystemPrompt = (basePrompt: string, gameInfo?: GameInfo, customInstructions?: string[]): string => {
     let prompt = basePrompt;
@@ -42,8 +43,8 @@ export const createPromptTemplate = (
     mode: GameMode,
     gameInfo?: GameInfo,
     customInstructions?: string[]
-): PromptTemplate => {
-    const templates: Record<GameMode, Omit<PromptTemplate, 'mode' | 'systemPrompt'>> = {
+): ComposedPrompt => {
+    const templates: Record<GameMode, { userPrompt: string; maxTokens: number; temperature: number }> = {
         tactical: {
             userPrompt: 'Analyze this gameplay moment and provide tactical advice. What are the key opportunities or threats? What should be the next strategic move?',
             maxTokens: 150,
@@ -68,10 +69,8 @@ export const createPromptTemplate = (
     };
 
     return {
-        mode,
         systemPrompt: buildSystemPrompt(basePrompts[mode], gameInfo, customInstructions),
-        ...templates[mode],
-        customInstructions,
+        userPrompt: templates[mode].userPrompt,
     };
 };
 
@@ -79,6 +78,6 @@ export const getPromptTemplate = (
     mode: GameMode,
     gameInfo?: GameInfo,
     customInstructions?: string[]
-): PromptTemplate => {
+): ComposedPrompt => {
     return createPromptTemplate(mode, gameInfo, customInstructions);
 }; 
