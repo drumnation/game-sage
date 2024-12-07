@@ -1,10 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { App } from 'antd';
-import type { ScreenshotConfig } from '@electron/types/electron-api';
+import type { ScreenshotConfig, APIResponse } from '@electron/types';
 import type { Screenshot } from '../Screenshot.types';
 
-interface CaptureError {
-    error: string;
+export interface ScreenshotCaptureHook {
+    isCapturing: boolean;
+    selectedDisplays: string[];
+    lastFrame: Screenshot | null;
+    startCapture: () => Promise<void>;
+    stopCapture: () => Promise<void>;
+    handleDisplaysChange: (displays: string[]) => void;
+    handleSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
+    handleCapture: () => Promise<void>;
 }
 
 interface CaptureFrameData {
@@ -34,19 +41,14 @@ export const useScreenshotCapture = () => {
         const api = window.electronAPI;
         if (!api) return;
 
-        api.getConfig().then(response => {
+        api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
             if (response.success && response.data?.activeDisplays?.length) {
                 setSelectedDisplays(response.data.activeDisplays);
             }
         });
     }, []);
 
-    const handleCaptureFrame = useCallback((data: CaptureFrameData | CaptureError) => {
-        if ('error' in data) {
-            message.error(typeof data.error === 'string' ? data.error : 'Capture error');
-            return;
-        }
-
+    const handleCaptureFrame = useCallback((data: CaptureFrameData) => {
         try {
             setScreenshots(prev => {
                 // Check if this is a hotkey capture and we already have a frame from this batch
@@ -84,16 +86,14 @@ export const useScreenshotCapture = () => {
         }
     }, [message]);
 
-    const handleSettingsChange = useCallback(async (settings: Partial<ScreenshotConfig>) => {
-        try {
-            const response = await window.electronAPI?.updateConfig(settings);
-            if (!response?.success) {
-                throw new Error('Failed to update settings');
-            }
-        } catch (error) {
+    const handleSettingsChange = useCallback((settings: Partial<ScreenshotConfig>) => {
+        const api = window.electronAPI;
+        if (!api) return;
+
+        api.updateConfig(settings).catch((error: Error) => {
+            console.error('Failed to update settings:', error);
             message.error('Failed to update settings');
-            console.error('Settings update error:', error);
-        }
+        });
     }, [message]);
 
     const handleDisplaysChange = useCallback((displays: string[]) => {
@@ -170,11 +170,9 @@ export const useScreenshotCapture = () => {
         if (!api) return;
 
         // Always listen for capture frames
-        // @ts-expect-error - Type mismatch between Electron IPC event data and our CaptureFrameData type
         api.on('capture-frame', handleCaptureFrame);
 
         return () => {
-            // @ts-expect-error - Type mismatch between Electron IPC event data and our CaptureFrameData type
             api.off('capture-frame', handleCaptureFrame);
         };
     }, [handleCaptureFrame]);

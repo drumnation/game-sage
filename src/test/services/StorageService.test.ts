@@ -1,5 +1,5 @@
 import { StorageService } from '../../../electron/services/storage/StorageService';
-import type { CaptureFrame } from '../../../electron/types/electron-api';
+import type { CaptureFrame } from '@electron/types';
 import type { Stats } from 'fs';
 import fs from 'fs/promises';
 import sharp from 'sharp';

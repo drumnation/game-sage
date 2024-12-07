@@ -4,6 +4,7 @@
   "quality": 80,
   "detectSceneChanges": false,
   "sceneChangeThreshold": 0.1,
+  "maxConcurrentCaptures": 1,
   "activeDisplays": [
     "1"
   ],

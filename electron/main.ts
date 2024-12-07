@@ -4,7 +4,7 @@ import { ScreenshotService } from './services/screenshot/ScreenshotService'
 import { HotkeyService } from './services/hotkey/HotkeyService'
 import type { ScreenshotConfig } from './services/screenshot/types'
 import type { HotkeyConfig } from './services/hotkey/types'
-import type { DisplayInfo, CaptureResult } from './types/electron-api'
+import type { DisplayInfo, CaptureResult } from './types'
 
 interface APIResponse<T = void> {
   success: boolean;

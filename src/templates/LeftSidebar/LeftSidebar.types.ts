@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ScreenshotConfig } from '@electron/types/electron-api';
+import type { ScreenshotConfig } from '@electron/types';
 
 export type TabKey = 'screenshot' | 'ai';
 

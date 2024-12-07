@@ -9,7 +9,7 @@ import {
     selectIsRecordingHotkey,
     selectPressedKeys,
 } from '../slices/hotkeySlice';
-import type { ElectronAPI, APIResponse } from '../../../electron/types/electron-api';
+import type { ElectronAPI, APIResponse } from '@electron/types';
 
 export const useHotkeyManager = () => {
     const dispatch = useAppDispatch();

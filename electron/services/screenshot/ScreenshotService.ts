@@ -2,13 +2,8 @@ import { screen, systemPreferences } from 'electron';
 import screenshot from 'screenshot-desktop';
 import sharp from 'sharp';
 import { EventEmitter } from 'events';
-import {
-    ScreenshotConfig,
-    ScreenshotMetadata,
-    CaptureResult,
-    DisplayInfo,
-    DEFAULT_CONFIG,
-} from './types';
+import type { DisplayInfo, CaptureResult, ScreenshotConfig } from '../../types';
+import { ScreenshotMetadata, DEFAULT_CONFIG } from './types';
 import { StorageConfig, StorageFormat } from '../storage/types';
 import { StorageService } from '../storage/StorageService';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Select } from 'antd';
 import type { MonitorSelectionProps } from '../../Screenshot.types';
-import type { DisplayInfo, APIResponse } from '@electron/types/electron-api';
+import type { DisplayInfo } from '@electron/types';
 
 const { Option } = Select;
 
@@ -21,7 +21,7 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({
 
         try {
             console.log('Fetching available displays...'); // Debug log
-            const response: APIResponse<DisplayInfo[]> = await api.listDisplays();
+            const response = await api.listDisplays();
             console.log('Displays response:', response);
 
             if (response.success && Array.isArray(response.data)) {
@@ -81,7 +81,7 @@ export const MonitorSelection: React.FC<MonitorSelectionProps> = ({
         >
             {displays.map(display => (
                 <Option key={display.id} value={display.id}>
-                    {display.name} {display.isPrimary ? '(Primary)' : ''}
+                    {display.name || `Display ${display.id}`} {display.isPrimary ? '(Primary)' : ''}
                 </Option>
             ))}
         </Select>

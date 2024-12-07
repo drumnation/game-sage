@@ -7,6 +7,7 @@ export interface ScreenshotConfig {
     detectSceneChanges: boolean;
     sceneChangeThreshold: number;
     activeDisplays?: string[];
+    maxConcurrentCaptures: number;
 }
 
 export interface ScreenshotMetadata {
@@ -43,4 +44,5 @@ export const DEFAULT_CONFIG: ScreenshotConfig = {
     quality: 80,
     detectSceneChanges: false,
     sceneChangeThreshold: 0.1,
+    maxConcurrentCaptures: 1
 }; 

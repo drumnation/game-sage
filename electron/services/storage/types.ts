@@ -2,14 +2,15 @@ import type {
     ScreenshotConfig as ElectronScreenshotConfig,
     CaptureResult,
     DisplayInfo,
-    CaptureFrameMetadata as ScreenshotMetadata,
-    CaptureFrame
-} from '../../types/electron-api';
+    CaptureFrame,
+    CaptureFrameMetadata,
+    ImageFormat
+} from '../../types';
 
-export type { CaptureResult, DisplayInfo, ScreenshotMetadata };
+export type { CaptureResult, DisplayInfo, CaptureFrame, CaptureFrameMetadata };
 export type ScreenshotConfig = ElectronScreenshotConfig;
+export type StorageFormat = ImageFormat;
 
-export type StorageFormat = 'jpeg' | 'png' | 'webp';
 export type OrganizationStrategy = 'flat' | 'date' | 'custom';
 
 export interface StorageConfig {
@@ -35,7 +36,7 @@ export interface StorageService {
 export interface StoredScreenshot {
     id: string;
     path: string;
-    metadata: ScreenshotMetadata;
+    metadata: CaptureFrameMetadata;
     size: number;
     createdAt: number;
     gameContext?: GameContext;

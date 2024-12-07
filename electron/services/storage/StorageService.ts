@@ -1,5 +1,5 @@
 import { StorageConfig, StorageService as IStorageService, StoredScreenshot, StorageStats } from './types';
-import type { CaptureFrame } from '../../types/electron-api';
+import type { CaptureFrame } from '../../types';
 import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'node:crypto';

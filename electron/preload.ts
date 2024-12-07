@@ -1,70 +1,36 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
-  GameEvent,
-  CaptureFrame,
-  MessagePayload,
   ElectronAPI,
-  CaptureError,
-  APIResponse,
-  CaptureResult,
-  DisplayInfo,
+  ValidChannel,
+  ChannelData
 } from './types';
-import type { ScreenshotConfig } from '../electron/services/screenshot/types';
-import type { ShortcutConfig } from '../electron/services/shortcuts/types';
-
-type ChannelTypeMap = {
-  'capture-frame': CaptureFrame | CaptureError;
-  'game-event': GameEvent;
-  'main-process-message': MessagePayload;
-  'capture-hotkey': void;
-  'shortcut-action': {
-    action: keyof ShortcutConfig;
-    success: boolean;
-    error?: string;
-    data?: unknown;
-  };
-};
-
-const validChannels: (keyof ChannelTypeMap)[] = [
-  'capture-frame',
-  'game-event',
-  'main-process-message',
-  'capture-hotkey',
-  'shortcut-action'
-];
-
-const isValidChannel = (channel: string): channel is keyof ChannelTypeMap => {
-  return validChannels.includes(channel as keyof ChannelTypeMap);
-};
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 const api: ElectronAPI = {
   // Event Listeners
-  on: (channel: string, callback: (data: CaptureFrame | CaptureError) => void) => {
-    if (isValidChannel(channel)) {
-      ipcRenderer.on(channel, (_event, data) => callback(data));
-    }
+  on<T extends ValidChannel>(channel: T, callback: (data: ChannelData<T>) => void) {
+    return ipcRenderer.on(channel, (_, data) => callback(data));
   },
-  off: (channel: string, callback: (data: CaptureFrame | CaptureError) => void) => {
-    if (isValidChannel(channel)) {
-      ipcRenderer.removeListener(channel, (_event, data) => callback(data));
-    }
+  off<T extends ValidChannel>(channel: T, callback: (data: ChannelData<T>) => void) {
+    return ipcRenderer.removeListener(channel, (_, data) => callback(data));
+  },
+  removeAllListeners(channel: ValidChannel) {
+    return ipcRenderer.removeAllListeners(channel);
+  },
+  setMaxListeners(n: number) {
+    return ipcRenderer.setMaxListeners(n);
   },
 
   // Screenshot Management
-  updateConfig: (config: Partial<ScreenshotConfig>) =>
-    ipcRenderer.invoke('update-screenshot-config', config) as Promise<APIResponse<void>>,
-  getConfig: () =>
-    ipcRenderer.invoke('get-screenshot-config') as Promise<APIResponse<ScreenshotConfig>>,
-  captureNow: () =>
-    ipcRenderer.invoke('capture-now') as Promise<APIResponse<CaptureResult[]>>,
-  listDisplays: () =>
-    ipcRenderer.invoke('list-displays') as Promise<APIResponse<DisplayInfo[]>>,
-  getHotkeys: () =>
-    ipcRenderer.invoke('get-hotkeys') as Promise<APIResponse<{ [key: string]: string }>>,
-  updateHotkey: (action: string, accelerator: string) =>
-    ipcRenderer.invoke('update-hotkey', action, accelerator) as Promise<APIResponse<void>>,
+  updateConfig: (config) => ipcRenderer.invoke('update-screenshot-config', config),
+  getConfig: () => ipcRenderer.invoke('get-screenshot-config'),
+  captureNow: () => ipcRenderer.invoke('capture-now'),
+  listDisplays: () => ipcRenderer.invoke('list-displays'),
+  startCapture: () => ipcRenderer.invoke('start-capture'),
+  stopCapture: () => ipcRenderer.invoke('stop-capture'),
+  updateHotkey: (action, accelerator) => ipcRenderer.invoke('update-hotkey', action, accelerator),
+  getHotkeys: () => ipcRenderer.invoke('get-hotkeys')
 };
 
 // Expose the electron object with hotkey event handlers

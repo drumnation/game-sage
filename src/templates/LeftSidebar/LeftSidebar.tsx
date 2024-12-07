@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'antd';
 import { Screenshot } from '../../features/Screenshot';
 import { AISettings } from '../../features/AI/components/AISettings';
-import type { ScreenshotConfig } from '../../../electron/types/electron-api';
+import type { ScreenshotConfig } from '@electron/types';
 import { useLeftSidebar } from './LeftSidebar.hook';
 import { LeftSidebarContainer } from './LeftSidebar.styles';
 

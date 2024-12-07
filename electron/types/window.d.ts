@@ -1,4 +1,4 @@
-import type { ElectronAPI } from '../../electron/types/electron-api';
+import type { ElectronAPI } from 'index';
 
 declare global {
     interface Window {

@@ -1,12 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 declare module 'screenshot-desktop' {
-    interface CaptureOptions {
-        screen?: string | number;
-        format?: 'png' | 'jpg';
+    interface ScreenshotOptions {
+        screen?: number;
+        format?: 'jpg' | 'png';
     }
 
-    function capture(options?: CaptureOptions): Promise<Buffer>;
-    function listDisplays(): Promise<{ id: string | number; name: string }[]>;
+    function screenshot(options?: ScreenshotOptions): Promise<Buffer>;
+    function listDisplays(): Promise<Array<{ id: number }>>;
 
-    export default capture;
-    export { listDisplays, CaptureOptions };
+    export = screenshot;
 } 

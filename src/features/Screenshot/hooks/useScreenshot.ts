@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { ScreenshotConfig } from '@electron/types/electron-api';
+import type { ScreenshotConfig } from '@electron/types';
 import type { ScreenshotHookState } from '../Screenshot.types';
 import { useScreenshotCapture } from './useScreenshotCapture';
 

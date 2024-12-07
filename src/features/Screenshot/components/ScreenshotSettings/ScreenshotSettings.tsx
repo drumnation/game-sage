@@ -1,21 +1,25 @@
 import React, { useEffect, useCallback } from 'react';
-import { Form, Switch, Slider, Input, Button, Modal, Select, Divider } from 'antd';
+import { Form, InputNumber, Select, Switch, Button, Slider, Modal, Divider } from 'antd';
 import { KeyOutlined, RedoOutlined } from '@ant-design/icons';
 import type { ScreenshotSettingsProps } from '../../Screenshot.types';
-import type { ScreenshotConfig, ImageFormat } from '@electron/types';
+import type { ScreenshotConfig, APIResponse } from '@electron/types';
 import { useHotkeyManager } from '../../../../store/hooks/useHotkeyManager';
 import { HotkeyInputContainer, HotkeyInput, HotkeyButtonGroup } from './ScreenshotSettings.styles';
 
-type FormValues = ScreenshotConfig & { useHotkey: boolean };
-type FormChangedValue = Partial<FormValues>;
+interface FormValues extends Omit<ScreenshotConfig, 'activeDisplays'> {
+    useHotkey: boolean;
+}
 
-const DEFAULT_VALUES: FormValues = {
+type FormChangedValues = Partial<FormValues>;
+
+const DEFAULT_VALUES: Partial<FormValues> = {
     captureInterval: 1000,
-    format: 'jpeg' as ImageFormat,
-    quality: 0.8,
+    format: 'jpeg',
+    quality: 80,
     detectSceneChanges: false,
     sceneChangeThreshold: 0.1,
     useHotkey: false,
+    maxConcurrentCaptures: 1
 };
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+C';
@@ -46,7 +50,7 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
         if (!api) return;
 
         // Load config
-        api.getConfig().then(response => {
+        api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
             if (response.success && response.data) {
                 const config = response.data;
                 form.setFieldsValue({
@@ -67,7 +71,7 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
         }
     }, [form, onSettingsChange, updateHotkey]);
 
-    const handleValuesChange = useCallback((changedValues: FormChangedValue, allValues: FormValues) => {
+    const handleValuesChange = useCallback((changedValues: FormChangedValues, allValues: FormValues) => {
         if (isCapturing) return;
 
         // Handle hotkey mode change
@@ -123,7 +127,7 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
                         <Form.Item label="Capture Hotkey">
                             <HotkeyInputContainer>
                                 <HotkeyInput>
-                                    <Input
+                                    <InputNumber
                                         value={captureHotkey}
                                         readOnly
                                         prefix={<KeyOutlined />}

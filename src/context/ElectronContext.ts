@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { ElectronAPI } from '../../electron/types/electron-api';
+import type { ElectronAPI } from '@electron/types';
 
 export interface ElectronContextType {
     api: ElectronAPI;
