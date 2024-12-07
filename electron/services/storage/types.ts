@@ -2,20 +2,34 @@ import type {
     ScreenshotConfig as ElectronScreenshotConfig,
     CaptureResult,
     DisplayInfo,
-    CaptureFrameMetadata as ScreenshotMetadata
+    CaptureFrameMetadata as ScreenshotMetadata,
+    CaptureFrame
 } from '../../types/electron-api';
 
 export type { CaptureResult, DisplayInfo, ScreenshotMetadata };
 export type ScreenshotConfig = ElectronScreenshotConfig;
 
+export type StorageFormat = 'jpeg' | 'png' | 'webp';
+export type OrganizationStrategy = 'flat' | 'date' | 'custom';
+
 export interface StorageConfig {
     basePath: string;
-    format: 'jpeg' | 'png' | 'webp';
+    format: StorageFormat;
     quality: number;
-    maxStorageSize: number; // in bytes
+    maxStorageSize: number;  // in bytes
     retentionDays: number;
-    organizationStrategy: 'date' | 'game' | 'flat';
+    organizationStrategy: OrganizationStrategy;
     namingPattern: string;
+}
+
+export interface StorageService {
+    init(): Promise<void>;
+    loadConfig<T>(key: string): Promise<T | null>;
+    saveConfig<T>(key: string, data: T): Promise<void>;
+    saveScreenshot(screenshot: CaptureFrame): Promise<StoredScreenshot>;
+    deleteScreenshot(id: string): Promise<void>;
+    updateConfig(config: Partial<StorageConfig>): Promise<void>;
+    getStats(): Promise<StorageStats>;
 }
 
 export interface StoredScreenshot {

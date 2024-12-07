@@ -9,93 +9,48 @@ import {
     DisplayInfo,
     DEFAULT_CONFIG,
 } from './types';
+import { StorageConfig, StorageFormat } from '../storage/types';
 import { StorageService } from '../storage/StorageService';
-import type { GameContext } from '../storage/types';
 
 export class ScreenshotService extends EventEmitter {
     private config: ScreenshotConfig;
-    private captureInterval: NodeJS.Timeout | null = null;
-    private lastFrames: Map<string, Buffer> = new Map();
-    private _isCapturing: boolean = false;
-    private storageService: StorageService;
+    private captureInterval: NodeJS.Timeout | null;
+    private lastFrames: Map<string, Buffer>;
+    private storage: StorageService;
 
-    constructor(config: Partial<ScreenshotConfig> = {}) {
+    constructor() {
         super();
-        this.config = { ...DEFAULT_CONFIG, ...config };
-        this.storageService = new StorageService();
+        this.config = { ...DEFAULT_CONFIG };
+        this.captureInterval = null;
+        this.lastFrames = new Map();
+
+        const storageConfig: StorageConfig = {
+            basePath: 'screenshots',
+            format: 'jpeg' as StorageFormat,
+            quality: 80,
+            maxStorageSize: 1024 * 1024 * 1024, // 1GB
+            retentionDays: 30,
+            organizationStrategy: 'date',
+            namingPattern: '{timestamp}_{display}'
+        };
+
+        this.storage = new StorageService(storageConfig);
+        this.initializeStorage();
     }
 
-    public isCapturing(): boolean {
-        return this._isCapturing;
-    }
-
-    public async initialize(): Promise<void> {
-        await this.storageService.init();
-    }
-
-    public async start(): Promise<void> {
-        if (this._isCapturing) return;
-        this._isCapturing = true;
-
-        this.captureInterval = setInterval(async () => {
-            try {
-                const displays = await this.getDisplays();
-                for (const display of displays) {
-                    const result = await this.captureDisplay(display);
-                    if (result) {
-                        this.emit('frame', result);
-                        await this.storageService.saveScreenshot(result);
-                    }
-                }
-            } catch (error) {
-                this.emit('error', error);
-            }
-        }, this.config.captureInterval);
-    }
-
-    public stop(): void {
-        if (this.captureInterval) {
-            clearInterval(this.captureInterval);
-            this.captureInterval = null;
-        }
-        this._isCapturing = false;
-        this.lastFrames.clear();
-    }
-
-    public async captureNow(gameContext?: GameContext): Promise<CaptureResult[]> {
-        try {
-            const displays = await this.getDisplays();
-            const results: CaptureResult[] = [];
-
-            for (const display of displays) {
-                try {
-                    const result = await this.captureDisplay(display);
-                    if (result) {
-                        results.push(result);
-                        await this.storageService.saveScreenshot(result, gameContext);
-                    }
-                } catch (error) {
-                    this.emit('error', error);
-                    throw error;
-                }
-            }
-
-            return results;
-        } catch (error) {
-            this.emit('error', error);
-            throw error;
+    private async initializeStorage(): Promise<void> {
+        await this.storage.init();
+        const savedConfig = await this.storage.loadConfig<ScreenshotConfig>('screenshot');
+        if (savedConfig) {
+            this.config = { ...this.config, ...savedConfig };
         }
     }
 
-    public updateConfig(newConfig: Partial<ScreenshotConfig>): void {
-        this.config = { ...this.config, ...newConfig };
-        if (this._isCapturing) {
-            this.stop();
-            this.start();
-        }
+    public getConfig(): ScreenshotConfig {
+        return { ...this.config };
     }
 
-    private async getDisplays(): Promise<DisplayInfo[]> {
+    public async getDisplays(): Promise<DisplayInfo[]> {
         const displays = screen.getAllDisplays();
         return displays.map(display => ({
             id: display.id.toString(),
@@ -108,6 +63,67 @@ export class ScreenshotService extends EventEmitter {
             },
             isPrimary: display.id === screen.getPrimaryDisplay().id,
         }));
+    }
+
+    public async updateConfig(config: Partial<ScreenshotConfig>): Promise<void> {
+        this.config = { ...this.config, ...config };
+        await this.storage.saveConfig('screenshot', this.config);
+    }
+
+    public async start(): Promise<void> {
+        if (this.captureInterval) {
+            return;
+        }
+
+        try {
+            this.captureInterval = setInterval(async () => {
+                try {
+                    await this.capture();
+                } catch (error) {
+                    this.emit('error', error);
+                }
+            }, this.config.captureInterval);
+        } catch (error) {
+            this.emit('error', error);
+            throw error;
+        }
+    }
+
+    public stop(): void {
+        if (this.captureInterval) {
+            clearInterval(this.captureInterval);
+            this.captureInterval = null;
+        }
+    }
+
+    public isCapturing(): boolean {
+        return this.captureInterval !== null;
+    }
+
+    public async captureNow(): Promise<CaptureResult[]> {
+        return this.capture();
+    }
+
+    private async capture(): Promise<CaptureResult[]> {
+        try {
+            const displays = await this.getDisplays();
+            const activeDisplays = this.config.activeDisplays || [displays[0].id];
+            const results: CaptureResult[] = [];
+
+            for (const display of displays) {
+                if (activeDisplays.includes(display.id)) {
+                    const result = await this.captureDisplay(display);
+                    if (result) {
+                        results.push(result);
+                    }
+                }
+            }
+
+            return results;
+        } catch (error) {
+            this.emit('error', error);
+            throw error;
+        }
     }
 
     private async captureDisplay(display: DisplayInfo): Promise<CaptureResult | null> {
@@ -151,54 +167,55 @@ export class ScreenshotService extends EventEmitter {
     }
 
     private async processImage(buffer: Buffer): Promise<Buffer> {
-        const sharpInstance = sharp(buffer);
+        const image = sharp(buffer);
 
+        // Apply image processing based on config
+        if (this.config.width || this.config.height) {
+            image.resize(this.config.width, this.config.height, {
+                fit: 'inside',
+                withoutEnlargement: true
+            });
+        }
+
+        // Convert to specified format with quality
         switch (this.config.format) {
-            case 'png':
-                return sharpInstance
-                    .png({ compressionLevel: this.config.compression })
-                    .toBuffer();
-            case 'webp':
-                return sharpInstance
-                    .webp({ quality: this.config.quality })
-                    .toBuffer();
             case 'jpeg':
+                return image.jpeg({ quality: this.config.quality || 80 }).toBuffer();
+            case 'png':
+                return image.png({ quality: this.config.quality || 80 }).toBuffer();
+            case 'webp':
+                return image.webp({ quality: this.config.quality || 80 }).toBuffer();
             default:
-                return sharpInstance
-                    .jpeg({ quality: this.config.quality })
-                    .toBuffer();
+                return image.jpeg({ quality: this.config.quality || 80 }).toBuffer();
         }
     }
 
     private async calculateSceneChange(lastFrame: Buffer, currentFrame: Buffer): Promise<number> {
-        // Convert both frames to grayscale and low resolution for faster comparison
-        const [lastGray, currentGray] = await Promise.all([
-            sharp(lastFrame)
-                .greyscale()
-                .resize(32, 32, { fit: 'fill' })
-                .raw()
-                .toBuffer(),
-            sharp(currentFrame)
-                .greyscale()
-                .resize(32, 32, { fit: 'fill' })
-                .raw()
-                .toBuffer(),
-        ]);
+        try {
+            // Convert both frames to grayscale and resize for faster comparison
+            const [lastGray, currentGray] = await Promise.all([
+                sharp(lastFrame).grayscale().resize(320, 240).raw().toBuffer(),
+                sharp(currentFrame).grayscale().resize(320, 240).raw().toBuffer()
+            ]);
 
-        // Calculate pixel differences
-        let diffCount = 0;
-        const threshold = 10; // Minimum brightness difference to count as changed
-
-        for (let i = 0; i < lastGray.length; i++) {
-            if (Math.abs(lastGray[i] - currentGray[i]) > threshold) {
-                diffCount++;
+            // Calculate mean squared error
+            let diff = 0;
+            for (let i = 0; i < lastGray.length; i++) {
+                diff += Math.pow(lastGray[i] - currentGray[i], 2);
             }
-        }
+            const mse = diff / lastGray.length;
+            const normalizedScore = Math.min(mse / 255, 1);
 
-        return diffCount / lastGray.length;
+            return normalizedScore;
+        } catch (error) {
+            this.emit('error', error);
+            throw error;
+        }
     }
 
     public dispose(): void {
         this.stop();
+        this.lastFrames.clear();
+        this.removeAllListeners();
     }
 } 

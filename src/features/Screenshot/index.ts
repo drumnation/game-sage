@@ -1,5 +1,5 @@
 // Root component
-export { default as Screenshot } from './Screenshot';
+export { Screenshot } from './Screenshot';
 
 // Types
 export * from './Screenshot.types';

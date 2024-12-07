@@ -129,8 +129,28 @@ function setupScreenshotService() {
 
   ipcMain.handle('update-screenshot-config', async (_event, config: Partial<ScreenshotConfig>) => {
     try {
-      screenshotService?.updateConfig(config);
+      await screenshotService?.updateConfig(config);
       return { success: true };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('get-screenshot-config', async () => {
+    try {
+      const config = screenshotService?.getConfig();
+      return { success: true, data: config };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('list-displays', async () => {
+    try {
+      const displays = await screenshotService?.getDisplays();
+      return { success: true, data: displays || [] };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return { success: false, error: errorMessage };

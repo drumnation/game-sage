@@ -1,15 +1,27 @@
 import React from 'react';
-import { ControlButton } from './components/ControlButton';
-import { ControlsContainer } from './ScreenshotControls.styles';
-import type { ScreenshotControlsProps } from '../../Screenshot.types';
+import { Button } from 'antd';
+import { CameraOutlined } from '@ant-design/icons';
 
-export const ScreenshotControls: React.FC<ScreenshotControlsProps> = ({ onCapture, isCapturing }) => {
+export interface ScreenshotControlsProps {
+    isCapturing: boolean;
+    onCapture: () => void;
+}
+
+export const ScreenshotControls: React.FC<ScreenshotControlsProps> = ({
+    isCapturing,
+    onCapture
+}) => {
     return (
-        <ControlsContainer>
-            <ControlButton
-                onClick={onCapture}
-                loading={isCapturing}
-            />
-        </ControlsContainer>
+        <Button
+            type="primary"
+            icon={<CameraOutlined />}
+            onClick={onCapture}
+            loading={isCapturing}
+            size="large"
+        >
+            Capture Screenshot
+        </Button>
     );
-}; 
+};
+
+export default ScreenshotControls; 

@@ -30,7 +30,6 @@ beforeEach(() => {
 
 // Cleanup after tests
 afterAll(() => {
-    // @ts-expect-error - Property 'electronAPI' does not exist on type 'Window & typeof globalThis'
     delete window.electronAPI;
 });
 

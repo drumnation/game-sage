@@ -1,45 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Form, InputNumber, Select, Switch, Slider } from 'antd';
-import type { ScreenshotConfig } from '@electron/services/screenshot/types';
+import type { ScreenshotConfig } from '@electron/types/electron-api';
+import { Form, InputNumber, Select, Slider, Switch, Typography } from 'antd';
+import React, { useCallback, useEffect } from 'react';
+
+const { Title } = Typography;
 
 interface ScreenshotSettingsProps {
     onSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
 }
 
 export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettingsChange }) => {
-    const [form] = Form.useForm();
-    const [config, setConfig] = useState<Partial<ScreenshotConfig>>();
+    const [form] = Form.useForm<Partial<ScreenshotConfig>>();
 
+    // Load initial config
     useEffect(() => {
-        // Load initial config
-        window.electronAPI?.getConfig().then(initialConfig => {
-            const { activeDisplays, ...configWithoutDisplays } = initialConfig;
-            setConfig(configWithoutDisplays);
-            form.setFieldsValue(configWithoutDisplays);
-        });
+        const loadConfig = async () => {
+            const api = window.electronAPI;
+            if (!api) return;
+
+            try {
+                const response = await api.getConfig();
+                if (response.success && response.data) {
+                    form.setFieldsValue(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        };
+
+        loadConfig();
     }, [form]);
 
-    const handleValuesChange = (_changedValues: unknown, allValues: Partial<ScreenshotConfig>) => {
-        onSettingsChange(allValues);
+    // Debounce settings changes
+    const debouncedSettingsChange = useCallback(
+        (values: Partial<ScreenshotConfig>) => {
+            onSettingsChange(values);
+        },
+        [onSettingsChange]
+    );
+
+    const handleValuesChange = (_: unknown, allValues: Partial<ScreenshotConfig>) => {
+        debouncedSettingsChange(allValues);
     };
 
     return (
-        <Card title="Screenshot Settings">
+        <div>
+            <Title level={4}>Screenshot Settings</Title>
             <Form
                 form={form}
                 layout="vertical"
                 onValuesChange={handleValuesChange}
-                initialValues={config}
+                initialValues={{
+                    captureInterval: 1000,
+                    format: 'jpeg',
+                    quality: 0.8,
+                    detectSceneChanges: false,
+                    sceneChangeThreshold: 0.1
+                }}
             >
                 <Form.Item
                     label="Capture Interval (ms)"
                     name="captureInterval"
-                    rules={[{ required: true, min: 1000, message: 'Interval must be at least 1000ms' }]}
+                    required
+                    tooltip="Time between captures in milliseconds"
                 >
                     <InputNumber
-                        min={1000}
-                        max={60000}
-                        step={1000}
+                        min={100}
+                        max={10000}
+                        step={100}
                         style={{ width: '100%' }}
                         addonAfter="ms"
                     />
@@ -48,7 +75,8 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettin
                 <Form.Item
                     label="Image Format"
                     name="format"
-                    rules={[{ required: true }]}
+                    required
+                    tooltip="Output image format"
                 >
                     <Select>
                         <Select.Option value="jpeg">JPEG</Select.Option>
@@ -60,15 +88,17 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettin
                 <Form.Item
                     label="Image Quality"
                     name="quality"
-                    rules={[{ required: true, min: 1, max: 100 }]}
+                    required
+                    tooltip="Higher quality means larger file size"
                 >
                     <Slider
-                        min={1}
-                        max={100}
+                        min={0.1}
+                        max={1}
+                        step={0.1}
                         marks={{
-                            1: 'Low',
-                            50: 'Medium',
-                            100: 'High'
+                            0.1: 'Low',
+                            0.5: 'Medium',
+                            1: 'High'
                         }}
                     />
                 </Form.Item>
@@ -84,20 +114,22 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({ onSettin
                 <Form.Item
                     label="Scene Change Threshold"
                     name="sceneChangeThreshold"
-                    rules={[{ required: true, min: 0, max: 1 }]}
+                    tooltip="Lower threshold means more sensitive detection"
+                    dependencies={['detectSceneChanges']}
                 >
                     <Slider
-                        min={0}
+                        min={0.1}
                         max={1}
-                        step={0.05}
+                        step={0.1}
+                        disabled={!form.getFieldValue('detectSceneChanges')}
                         marks={{
-                            0: 'Low',
+                            0.1: 'Low',
                             0.5: 'Medium',
                             1: 'High'
                         }}
                     />
                 </Form.Item>
             </Form>
-        </Card>
+        </div>
     );
 }; 

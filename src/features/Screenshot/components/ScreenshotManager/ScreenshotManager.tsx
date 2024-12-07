@@ -28,7 +28,6 @@ export const ScreenshotManager: React.FC<ScreenshotManagerProps> = ({ onCapture,
             <ScreenshotControls
                 onCapture={handleCapture}
                 isCapturing={state.isCapturing}
-                error={state.error}
             />
         </ManagerContainer>
     );

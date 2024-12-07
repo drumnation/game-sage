@@ -1,23 +1,12 @@
 import '@testing-library/jest-dom';
-import type { ElectronAPI } from '../../electron/types/electron-api';
+import { mockElectronAPI } from './helpers/mockElectron';
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI;
+    electronAPI?: typeof mockElectronAPI;
   }
 }
 
-// Mock Electron context
-const mockElectronAPI: ElectronAPI = {
-  on: jest.fn(),
-  off: jest.fn(),
-  updateConfig: jest.fn().mockResolvedValue(undefined),
-  getConfig: jest.fn().mockResolvedValue({ captureInterval: 1000 }),
-  captureNow: jest.fn().mockResolvedValue(undefined),
-  listDisplays: jest.fn().mockResolvedValue([])
-};
-
-// Mock window.electron
 Object.defineProperty(window, 'electronAPI', {
   value: mockElectronAPI,
   writable: true

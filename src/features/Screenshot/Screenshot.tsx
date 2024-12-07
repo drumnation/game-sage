@@ -1,49 +1,71 @@
-import React, { useEffect } from 'react';
-import { Button, List, Card, message } from 'antd';
-import type { ScreenshotProps } from './Screenshot.types';
+import React, { useState } from 'react';
+import { Space } from 'antd';
+import { ScreenshotControls, MonitorSelection, ScreenshotSettings } from './components';
+import type { ScreenshotConfig } from '@electron/types/electron-api';
+import {
+    ScreenshotContainer,
+    ScreenshotSider,
+    ScreenshotContent,
+    GridContainer,
+    SettingsPanel,
+    ControlsPanel
+} from './Screenshot.styles';
 
-export const Screenshot: React.FC<ScreenshotProps> = ({
-    screenshots,
-    selectedId,
-    onCapture,
-    onSelect,
-    onError
-}) => {
-    useEffect(() => {
-        if (onError) {
-            message.error('Failed to capture screenshot');
+export const Screenshot: React.FC = () => {
+    const [selectedDisplays, setSelectedDisplays] = useState<string[]>([]);
+    const [isCapturing, setIsCapturing] = useState(false);
+
+    const handleDisplaysChange = (displays: string[]) => {
+        setSelectedDisplays(displays);
+        window.electronAPI?.updateConfig({ activeDisplays: displays });
+    };
+
+    const handleSettingsChange = async (settings: Partial<ScreenshotConfig>) => {
+        try {
+            await window.electronAPI?.updateConfig(settings);
+        } catch (error) {
+            console.error('Failed to update settings:', error);
         }
-    }, [onError]);
+    };
+
+    const handleCapture = async () => {
+        if (selectedDisplays.length === 0) {
+            console.error('No displays selected');
+            return;
+        }
+
+        try {
+            setIsCapturing(true);
+            await window.electronAPI?.captureNow();
+        } catch (error) {
+            console.error('Failed to capture:', error);
+        } finally {
+            setIsCapturing(false);
+        }
+    };
 
     return (
-        <div>
-            <Button onClick={onCapture}>
-                Capture Screenshot
-            </Button>
-
-            <List
-                grid={{ gutter: 16, column: 3 }}
-                dataSource={screenshots}
-                renderItem={screenshot => (
-                    <List.Item>
-                        <Card
-                            hoverable
-                            cover={<img alt="screenshot" src={screenshot.imageData} />}
-                            onClick={() => onSelect(screenshot.id)}
-                            style={{
-                                borderColor: selectedId === screenshot.id ? '#1890ff' : undefined,
-                                borderWidth: selectedId === screenshot.id ? 2 : 1
-                            }}
-                        >
-                            <Card.Meta
-                                title={new Date(screenshot.metadata.timestamp).toLocaleString()}
-                                description={`${screenshot.metadata.width}x${screenshot.metadata.height}`}
-                            />
-                        </Card>
-                    </List.Item>
-                )}
-            />
-        </div>
+        <ScreenshotContainer>
+            <ScreenshotSider>
+                <SettingsPanel>
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                        <ScreenshotSettings onSettingsChange={handleSettingsChange} />
+                        <MonitorSelection onDisplaysChange={handleDisplaysChange} />
+                    </Space>
+                </SettingsPanel>
+                <ControlsPanel>
+                    <ScreenshotControls
+                        onCapture={handleCapture}
+                        isCapturing={isCapturing}
+                    />
+                </ControlsPanel>
+            </ScreenshotSider>
+            <ScreenshotContent>
+                <GridContainer>
+                    {/* Screenshot grid content will go here */}
+                </GridContainer>
+            </ScreenshotContent>
+        </ScreenshotContainer>
     );
 };
 

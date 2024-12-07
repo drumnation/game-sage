@@ -1,12 +1,40 @@
-import type {
-    ScreenshotConfig as ElectronScreenshotConfig,
-    CaptureResult,
-    DisplayInfo,
-    CaptureFrameMetadata as ScreenshotMetadata
-} from '../../types/electron-api';
+export interface ScreenshotConfig {
+    captureInterval: number;
+    format: 'jpeg' | 'png' | 'webp';
+    quality: number;
+    width?: number;
+    height?: number;
+    detectSceneChanges: boolean;
+    sceneChangeThreshold: number;
+    activeDisplays?: string[];
+}
 
-export type { CaptureResult, DisplayInfo, ScreenshotMetadata };
-export type ScreenshotConfig = ElectronScreenshotConfig;
+export interface ScreenshotMetadata {
+    timestamp: number;
+    displayId: string;
+    width: number;
+    height: number;
+    format: 'jpeg' | 'png' | 'webp';
+    isSceneChange?: boolean;
+    previousSceneScore?: number;
+}
+
+export interface DisplayInfo {
+    id: string;
+    name: string;
+    bounds: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+    isPrimary: boolean;
+}
+
+export interface CaptureResult {
+    buffer: Buffer;
+    metadata: ScreenshotMetadata;
+}
 
 export const DEFAULT_CONFIG: ScreenshotConfig = {
     captureInterval: 1000,
@@ -14,5 +42,4 @@ export const DEFAULT_CONFIG: ScreenshotConfig = {
     quality: 80,
     detectSceneChanges: false,
     sceneChangeThreshold: 0.1,
-    compression: 6
 }; 

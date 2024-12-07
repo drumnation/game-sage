@@ -6,5 +6,7 @@ export const mockElectronAPI: ElectronAPI = {
     updateConfig: jest.fn().mockResolvedValue(undefined),
     getConfig: jest.fn().mockResolvedValue({ captureInterval: 1000 }),
     captureNow: jest.fn().mockResolvedValue(undefined),
-    listDisplays: jest.fn().mockResolvedValue([])
+    listDisplays: jest.fn().mockResolvedValue([]),
+    startCapture: jest.fn().mockResolvedValue(undefined),
+    stopCapture: jest.fn().mockResolvedValue(undefined)
 }; 

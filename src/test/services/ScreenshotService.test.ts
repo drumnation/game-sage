@@ -83,7 +83,7 @@ describe('Screenshot Capture System', () => {
         // Arrange
         jest.clearAllMocks();
         service = new ScreenshotService();
-        await service['storageService'].init();
+        await service['storage'].init();
     });
 
     afterEach(() => {

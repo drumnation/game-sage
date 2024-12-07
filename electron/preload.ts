@@ -37,8 +37,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startCapture: () => ipcRenderer.invoke('start-capture'),
   stopCapture: () => ipcRenderer.invoke('stop-capture'),
   captureNow: () => ipcRenderer.invoke('capture-now'),
-  updateScreenshotConfig: (config: Partial<ScreenshotConfig>) =>
+  updateConfig: (config: Partial<ScreenshotConfig>) =>
     ipcRenderer.invoke('update-screenshot-config', config),
+  getConfig: () => ipcRenderer.invoke('get-screenshot-config'),
+  listDisplays: () => ipcRenderer.invoke('list-displays'),
 
   // Shortcuts Management
   updateShortcuts: (config: Partial<ShortcutConfig>) =>

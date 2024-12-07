@@ -1,181 +1,106 @@
-import { EventEmitter } from 'events';
+import { StorageConfig, StorageService as IStorageService, StoredScreenshot, StorageStats } from './types';
+import type { CaptureFrame } from '../../types/electron-api';
 import fs from 'fs/promises';
 import path from 'path';
-import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
-import type { CaptureResult } from '../screenshot/types';
-import type { GameContext, StorageConfig, StorageStats, StoredScreenshot } from './types';
-import { DEFAULT_STORAGE_CONFIG } from './types';
 
-export class StorageService extends EventEmitter {
+export class StorageService implements IStorageService {
     private config: StorageConfig;
-    private metadata: Map<string, StoredScreenshot>;
-    private initialized: boolean;
+    private configPath: string;
 
-    constructor(config?: Partial<StorageConfig>) {
-        super();
-        this.config = { ...DEFAULT_STORAGE_CONFIG, ...config };
-        this.metadata = new Map();
-        this.initialized = false;
+    constructor(config: StorageConfig) {
+        this.config = config;
+        this.configPath = path.join(this.config.basePath, 'config');
     }
 
     public async init(): Promise<void> {
-        if (this.initialized) return;
-
         try {
             await fs.mkdir(this.config.basePath, { recursive: true });
-            await this.loadMetadata();
-            this.initialized = true;
+            await fs.mkdir(this.configPath, { recursive: true });
         } catch (error) {
-            throw new Error(`Failed to initialize storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    }
-
-    public async saveScreenshot(
-        screenshot: CaptureResult,
-        gameContext?: GameContext
-    ): Promise<StoredScreenshot> {
-        if (!('buffer' in screenshot) || !('metadata' in screenshot)) {
-            throw new Error('Invalid screenshot data');
-        }
-
-        if (!this.initialized) {
-            throw new Error('Storage service not initialized');
-        }
-
-        try {
-            const id = uuidv4();
-            const timestamp = Date.now();
-            const fileName = this.generateFileName(timestamp, gameContext);
-            const filePath = this.getFilePath(fileName);
-
-            // Process and save the image
-            await this.processAndSaveImage(screenshot.buffer, filePath);
-
-            // Get file size
-            const stats = await fs.stat(filePath);
-
-            const storedScreenshot: StoredScreenshot = {
-                id,
-                path: filePath,
-                metadata: screenshot.metadata,
-                size: stats.size,
-                createdAt: timestamp,
-                gameContext,
-            };
-
-            // Save metadata
-            this.metadata.set(id, storedScreenshot);
-            await this.saveMetadata();
-
-            // Check storage limits
-            await this.enforceStorageLimits();
-
-            this.emit('screenshot-saved', storedScreenshot);
-            return storedScreenshot;
-        } catch (error) {
-            this.emit('error', {
-                action: 'saveScreenshot',
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
+            console.error('Failed to initialize storage:', error);
             throw error;
         }
     }
 
-    private generateFileName(timestamp: number, gameContext?: GameContext): string {
-        const date = new Date(timestamp);
-        const dateStr = date.toISOString().replace(/[:.]/g, '-');
-        const contextStr = gameContext ? `-${gameContext.gameId}-${gameContext.eventType}` : '';
-        return `screenshot-${dateStr}${contextStr}.png`;
-    }
-
-    private getFilePath(fileName: string): string {
-        return path.join(this.config.basePath, fileName);
-    }
-
-    private async processAndSaveImage(buffer: Buffer, filePath: string): Promise<void> {
-        await sharp(buffer)
-            .png({ quality: 90 })
-            .toFile(filePath);
-    }
-
-    private async loadMetadata(): Promise<void> {
+    public async loadConfig<T>(key: string): Promise<T | null> {
         try {
-            const metadataPath = path.join(this.config.basePath, 'metadata.json');
-            const data = await fs.readFile(metadataPath, 'utf-8');
-            const parsed = JSON.parse(data);
-            this.metadata = new Map(Object.entries(parsed));
+            const data = await fs.readFile(path.join(this.configPath, `${key}.json`), 'utf-8');
+            return JSON.parse(data) as T;
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-                throw error;
+            if ((error as { code: string }).code === 'ENOENT') {
+                return null;
             }
+            throw error;
         }
     }
 
-    private async saveMetadata(): Promise<void> {
-        const metadataPath = path.join(this.config.basePath, 'metadata.json');
-        const data = Object.fromEntries(this.metadata);
-        await fs.writeFile(metadataPath, JSON.stringify(data, null, 2));
+    public async saveConfig<T>(key: string, data: T): Promise<void> {
+        await fs.writeFile(
+            path.join(this.configPath, `${key}.json`),
+            JSON.stringify(data, null, 2)
+        );
     }
 
-    private async enforceStorageLimits(): Promise<void> {
-        const stats = await this.getStorageStats();
-        if (stats.totalSize > this.config.maxStorageSize) {
-            const screenshots = Array.from(this.metadata.values())
-                .sort((a, b) => a.createdAt - b.createdAt);
+    public async saveScreenshot(screenshot: CaptureFrame): Promise<StoredScreenshot> {
+        const id = crypto.randomUUID();
+        const fileName = `screenshot-${new Date(screenshot.metadata.timestamp).toISOString().replace(/:/g, '-')}.png`;
+        const filePath = path.join(this.config.basePath, fileName);
 
-            while (stats.totalSize > this.config.maxStorageSize && screenshots.length > 0) {
-                const oldest = screenshots.shift();
-                if (oldest) {
-                    await this.deleteScreenshot(oldest.id);
-                }
-            }
-        }
+        await fs.writeFile(filePath, screenshot.buffer);
+        const stats = await fs.stat(filePath);
+
+        const storedScreenshot: StoredScreenshot = {
+            id,
+            path: filePath,
+            metadata: screenshot.metadata,
+            size: stats.size,
+            createdAt: Date.now()
+        };
+
+        return storedScreenshot;
     }
 
     public async deleteScreenshot(id: string): Promise<void> {
-        const screenshot = this.metadata.get(id);
-        if (!screenshot) return;
+        const metadata = await this.loadConfig<Record<string, StoredScreenshot>>('metadata');
+        if (!metadata || !metadata[id]) {
+            throw new Error(`Screenshot ${id} not found`);
+        }
 
-        try {
-            await fs.unlink(screenshot.path);
-            this.metadata.delete(id);
-            await this.saveMetadata();
-            this.emit('screenshot-deleted', id);
-        } catch (error) {
-            this.emit('error', {
-                action: 'deleteScreenshot',
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw error;
+        await fs.unlink(metadata[id].path);
+        delete metadata[id];
+        await this.saveConfig('metadata', metadata);
+    }
+
+    public async updateConfig(config: Partial<StorageConfig>): Promise<void> {
+        const oldPath = this.config.basePath;
+        this.config = { ...this.config, ...config };
+
+        if (config.basePath && config.basePath !== oldPath) {
+            await fs.mkdir(config.basePath, { recursive: true });
+            // Migration logic would go here
         }
     }
 
-    public async getStorageStats(): Promise<StorageStats> {
-        const screenshots = Array.from(this.metadata.values());
-        const totalSize = screenshots.reduce((sum, s) => sum + s.size, 0);
-        return {
-            count: screenshots.length,
-            totalSize,
-            availableSize: this.config.maxStorageSize - totalSize,
-        };
-    }
+    public async getStats(): Promise<StorageStats> {
+        try {
+            const metadata = await this.loadConfig<Record<string, StoredScreenshot>>('metadata') || {};
+            const screenshots = Object.values(metadata);
 
-    public async updateConfig(newConfig: Partial<StorageConfig>): Promise<void> {
-        const oldPath = this.config.basePath;
-        this.config = { ...this.config, ...newConfig };
+            const totalSize = screenshots.reduce((sum, screenshot) => sum + screenshot.size, 0);
+            const availableSize = this.config.maxStorageSize - totalSize;
 
-        if (newConfig.basePath && newConfig.basePath !== oldPath) {
-            await fs.mkdir(newConfig.basePath, { recursive: true });
-            for (const screenshot of this.metadata.values()) {
-                const newPath = path.join(
-                    newConfig.basePath,
-                    path.basename(screenshot.path)
-                );
-                await fs.rename(screenshot.path, newPath);
-                screenshot.path = newPath;
-            }
-            await this.saveMetadata();
+            return {
+                count: screenshots.length,
+                totalSize,
+                availableSize: Math.max(0, availableSize)
+            };
+        } catch (error) {
+            console.error('Failed to get storage stats:', error);
+            return {
+                count: 0,
+                totalSize: 0,
+                availableSize: this.config.maxStorageSize
+            };
         }
     }
 } 
