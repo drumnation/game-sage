@@ -5,10 +5,13 @@ export const LeftSidebarContainer = styled.aside`
     height: 100vh;
     background-color: ${({ theme }) => theme.colors.surface};
     border-right: 1px solid ${({ theme }) => theme.colors.border};
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 
     .ant-tabs {
-        height: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
         
         .ant-tabs-nav {
             margin: 0;
@@ -18,6 +21,7 @@ export const LeftSidebarContainer = styled.aside`
         }
 
         .ant-tabs-content-holder {
+            flex: 1;
             overflow-y: auto;
         }
 
@@ -27,6 +31,7 @@ export const LeftSidebarContainer = styled.aside`
 
         .ant-tabs-tabpane {
             padding: ${({ theme }) => theme.spacing.md};
+            height: 100%;
         }
     }
 `; 

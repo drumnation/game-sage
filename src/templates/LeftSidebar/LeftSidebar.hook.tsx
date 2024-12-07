@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { CameraOutlined, SettingOutlined } from '@ant-design/icons';
+import { CameraOutlined, RobotOutlined } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import type { TabKey, TabConfig } from './LeftSidebar.types';
 
@@ -11,7 +11,7 @@ const createTabConfig = (key: TabKey, label: string, icon: React.ReactNode): Tab
 
 const TAB_CONFIGS: TabConfig[] = [
     createTabConfig('screenshot', 'Screenshot', <CameraOutlined />),
-    createTabConfig('ai', 'AI Settings', <SettingOutlined />),
+    createTabConfig('ai', 'AI Settings', <RobotOutlined />),
 ];
 
 export const useLeftSidebar = () => {
