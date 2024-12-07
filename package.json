@@ -10,6 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
     "version:major": "pnpm version major -m 'chore(release): bump version to %s'",
     "version:minor": "pnpm version minor -m 'chore(release): bump version to %s'",
     "version:patch": "pnpm version patch -m 'chore(release): bump version to %s'",
@@ -20,11 +21,17 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
     "@reduxjs/toolkit": "^2.4.0",
+    "@types/sharp": "^0.32.0",
+    "@types/uuid": "^10.0.0",
     "antd": "^5.22.3",
+    "electron-localshortcut": "^3.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-redux": "^9.1.2",
-    "styled-components": "^6.1.13"
+    "screenshot-desktop": "^1.15.0",
+    "sharp": "^0.33.5",
+    "styled-components": "^6.1.13",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@jest/types": "^29.6.3",
@@ -32,6 +39,7 @@
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
     "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.1",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@types/styled-components": "^5.1.34",

@@ -6,20 +6,37 @@ const config: Config.InitialOptions = {
   setupFilesAfterEnv: ['<rootDir>/src/test/setupTests.ts'],
   moduleNameMapper: {
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
-    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/src/test/__mocks__/fileMock.ts',
+    '\\.(gif|ttf|eot|svg|png|jpg|jpeg)$': '<rootDir>/src/test/__mocks__/fileMock.ts',
   },
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: 'tsconfig.test.json',
+      isolatedModules: true,
+      diagnostics: {
+        ignoreCodes: [1343]
+      }
+    }],
   },
-  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[jt]sx?$',
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  testMatch: [
+    '<rootDir>/src/test/**/*.test.{ts,tsx}',
+  ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
     '!src/test/**/*',
+    '!src/**/*.d.ts',
     '!src/vite-env.d.ts',
   ],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+  },
+  moduleDirectories: ['node_modules', 'src'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/', '/dist-electron/'],
+  verbose: true
 };
 
 export default config; 

@@ -15,4 +15,15 @@ module.exports = {
       { allowConstantExport: true },
     ],
   },
+  globals: {
+    React: 'readonly'
+  },
+  overrides: [
+    {
+      files: ['**/*.test.tsx', '**/*.test.ts', '**/testUtils.tsx'],
+      rules: {
+        '@typescript-eslint/no-unused-vars': 'off'
+      }
+    }
+  ]
 }

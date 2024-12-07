@@ -1,35 +1,45 @@
 # Changelog
 
-All notable changes to GameSage will be documented in this file.
+All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
+## [0.2.0] - 2024-01-20
 
 ### Added
 
-- Initial project setup with Electron, React, and TypeScript
-- Dark theme implementation using Ant Design and styled-components
-- Redux Toolkit integration for state management
-- Jest and React Testing Library setup
-- Type-safe IPC communication between main and renderer processes
-- Basic window management in Electron main process
-- Development environment configuration with Vite
-- Comprehensive test utilities and mocks
-- Project documentation in README.md
-
-### Changed
-
-- Converted project from ESM to CommonJS for better Electron compatibility
-- Updated Vite configuration for proper Electron integration
+- Comprehensive test suite for core functionality
+  - Unit tests for ScreenshotService and StorageService
+  - Component tests for ScreenshotManager
+  - Integration tests for Electron IPC communication
+- Test fixtures and utilities
+  - Test image generation script
+  - Mock implementations for Electron IPC
+  - Custom test utilities for React components
+- Performance and memory management tests
+- Scene change detection with configurable thresholds
+- Error handling and recovery mechanisms
 
 ### Fixed
 
-- Resolved TypeScript type conflicts in test setup
-- Fixed ESLint configuration for React Refresh
-- Corrected IPC communication type definitions
+- Memory leaks in screenshot capture process
+- Proper cleanup of resources on component unmount
+- Type safety issues in IPC communication
+- Linter errors and code style consistency
 
-## [0.0.0] - 2024-03-06
+### Changed
 
-- Initial repository setup
+- Improved test organization and structure
+- Enhanced error messaging and user feedback
+- Optimized screenshot capture performance
+- Updated component documentation
+
+## [0.1.0] - 2024-01-15
+
+### Added
+
+- Initial release
+- Basic screenshot capture functionality
+- Real-time preview of captured screenshots
+- Configurable capture intervals
+- Basic UI with Ant Design components
+- Electron IPC communication setup
+- Project structure and development environment

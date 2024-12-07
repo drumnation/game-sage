@@ -65,6 +65,14 @@ const stylingRules = [
   "Implement accessibility considerations in styles",
 ];
 
+const electronSpecificStylingRules = [
+  "Respect system color schemes using prefers-color-scheme media queries",
+  "Support OS-level text scaling",
+  "Ensure touch targets are sized appropriately for both mouse and touch input",
+  "Implement focus indicators that work across both dark and light themes",
+  "Handle window-level zoom accessibility features"
+];
+
 // JSX Rules
 const jsxRules = [
   "Create `{componentName}.tsx` for the component logic",
@@ -152,6 +160,7 @@ const additionalInstructions = `
 `;
 
 // Example Integration
+```tsx
 const exampleIntegration = `
 import React, { useCallback } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
@@ -195,7 +204,7 @@ const App = () => {
 };
 
 export default App;
-`;
+`;```
 
 export {
   preferFunctionalComponents,
@@ -205,6 +214,7 @@ export {
   viteBestPractices,
   typeScriptBestPractices,
   stylingRules,
+  electronSpecificStylingRules,
   jsxRules,
   reduxRules,
   performanceOptimizationRules,

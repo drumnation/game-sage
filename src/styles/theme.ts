@@ -37,4 +37,9 @@ export const theme = {
   },
 } as const;
 
-export type Theme = typeof theme; 
+export type Theme = typeof theme;
+
+// Add type definition for styled-components
+declare module 'styled-components' {
+  export interface DefaultTheme extends Theme { }
+} 
