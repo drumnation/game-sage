@@ -52,6 +52,8 @@ export interface StorageStats {
     count: number;
     totalSize: number;
     availableSize: number;
+    oldestScreenshot: number;
+    newestScreenshot: number;
 }
 
 export const DEFAULT_STORAGE_CONFIG: StorageConfig = {

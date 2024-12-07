@@ -1,12 +1,7 @@
 import '@testing-library/jest-dom';
 import { mockElectronAPI } from './helpers/mockElectron';
 
-declare global {
-  interface Window {
-    electronAPI?: typeof mockElectronAPI;
-  }
-}
-
+// Mock window.electron
 Object.defineProperty(window, 'electronAPI', {
   value: mockElectronAPI,
   writable: true

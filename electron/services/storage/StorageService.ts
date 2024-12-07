@@ -2,20 +2,27 @@ import { StorageConfig, StorageService as IStorageService, StoredScreenshot, Sto
 import type { CaptureFrame } from '../../types/electron-api';
 import fs from 'fs/promises';
 import path from 'path';
+import { randomUUID } from 'node:crypto';
 
 export class StorageService implements IStorageService {
     private config: StorageConfig;
     private configPath: string;
+    private metadata: Record<string, StoredScreenshot>;
 
     constructor(config: StorageConfig) {
         this.config = config;
         this.configPath = path.join(this.config.basePath, 'config');
+        this.metadata = {};
     }
 
     public async init(): Promise<void> {
         try {
             await fs.mkdir(this.config.basePath, { recursive: true });
             await fs.mkdir(this.configPath, { recursive: true });
+            const savedMetadata = await this.loadConfig<Record<string, StoredScreenshot>>('metadata');
+            if (savedMetadata) {
+                this.metadata = savedMetadata;
+            }
         } catch (error) {
             console.error('Failed to initialize storage:', error);
             throw error;
@@ -41,8 +48,25 @@ export class StorageService implements IStorageService {
         );
     }
 
+    private async enforceStorageLimits(): Promise<void> {
+        let totalSize = 0;
+        const screenshots = Object.values(this.metadata).sort((a, b) => a.createdAt - b.createdAt);
+
+        for (const screenshot of screenshots) {
+            totalSize += screenshot.size;
+        }
+
+        while (totalSize > this.config.maxStorageSize && screenshots.length > 0) {
+            const oldestScreenshot = screenshots.shift();
+            if (oldestScreenshot) {
+                await this.deleteScreenshot(oldestScreenshot.id);
+                totalSize -= oldestScreenshot.size;
+            }
+        }
+    }
+
     public async saveScreenshot(screenshot: CaptureFrame): Promise<StoredScreenshot> {
-        const id = crypto.randomUUID();
+        const id = randomUUID();
         const fileName = `screenshot-${new Date(screenshot.metadata.timestamp).toISOString().replace(/:/g, '-')}.png`;
         const filePath = path.join(this.config.basePath, fileName);
 
@@ -57,18 +81,22 @@ export class StorageService implements IStorageService {
             createdAt: Date.now()
         };
 
+        this.metadata[id] = storedScreenshot;
+        await this.saveConfig('metadata', this.metadata);
+        await this.enforceStorageLimits();
+
         return storedScreenshot;
     }
 
     public async deleteScreenshot(id: string): Promise<void> {
-        const metadata = await this.loadConfig<Record<string, StoredScreenshot>>('metadata');
-        if (!metadata || !metadata[id]) {
+        if (!this.metadata[id]) {
             throw new Error(`Screenshot ${id} not found`);
         }
 
-        await fs.unlink(metadata[id].path);
-        delete metadata[id];
-        await this.saveConfig('metadata', metadata);
+        const screenshot = this.metadata[id];
+        await fs.unlink(screenshot.path);
+        delete this.metadata[id];
+        await this.saveConfig('metadata', this.metadata);
     }
 
     public async updateConfig(config: Partial<StorageConfig>): Promise<void> {
@@ -77,30 +105,22 @@ export class StorageService implements IStorageService {
 
         if (config.basePath && config.basePath !== oldPath) {
             await fs.mkdir(config.basePath, { recursive: true });
+            await fs.mkdir(path.join(config.basePath, 'config'), { recursive: true });
             // Migration logic would go here
         }
     }
 
     public async getStats(): Promise<StorageStats> {
-        try {
-            const metadata = await this.loadConfig<Record<string, StoredScreenshot>>('metadata') || {};
-            const screenshots = Object.values(metadata);
+        const screenshots = Object.values(this.metadata);
+        const totalSize = screenshots.reduce((acc, shot) => acc + shot.size, 0);
+        const availableSize = Math.max(0, this.config.maxStorageSize - totalSize);
 
-            const totalSize = screenshots.reduce((sum, screenshot) => sum + screenshot.size, 0);
-            const availableSize = this.config.maxStorageSize - totalSize;
-
-            return {
-                count: screenshots.length,
-                totalSize,
-                availableSize: Math.max(0, availableSize)
-            };
-        } catch (error) {
-            console.error('Failed to get storage stats:', error);
-            return {
-                count: 0,
-                totalSize: 0,
-                availableSize: this.config.maxStorageSize
-            };
-        }
+        return {
+            count: screenshots.length,
+            totalSize,
+            availableSize,
+            oldestScreenshot: screenshots.length > 0 ? Math.min(...screenshots.map(s => s.createdAt)) : 0,
+            newestScreenshot: screenshots.length > 0 ? Math.max(...screenshots.map(s => s.createdAt)) : 0
+        };
     }
 } 

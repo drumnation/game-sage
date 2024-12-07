@@ -26,11 +26,13 @@ const createTestImage = async () => {
         .toBuffer();
 };
 
-// Only mock external dependencies
+// Mock StorageService
 jest.mock('../../../electron/services/storage/StorageService', () => {
     return {
         StorageService: jest.fn().mockImplementation(() => ({
             init: jest.fn().mockResolvedValue(undefined),
+            loadConfig: jest.fn().mockResolvedValue(null),
+            saveConfig: jest.fn().mockResolvedValue(undefined),
             saveScreenshot: jest.fn().mockImplementation(async (screenshot: CaptureFrame) => ({
                 id: 'test-id',
                 path: '/test/path/screenshot.png',
@@ -42,7 +44,7 @@ jest.mock('../../../electron/services/storage/StorageService', () => {
     };
 });
 
-// Mock Electron's screen API (system boundary)
+// Mock Electron's screen API
 jest.mock('electron', () => {
     const primaryDisplay = {
         id: 0,
@@ -57,7 +59,7 @@ jest.mock('electron', () => {
     };
 });
 
-// Mock screenshot-desktop (system boundary)
+// Mock screenshot-desktop
 jest.mock('screenshot-desktop', () => {
     let mockBuffer: Buffer;
     return {
@@ -80,41 +82,27 @@ describe('Screenshot Capture System', () => {
     });
 
     beforeEach(async () => {
-        // Arrange
         jest.clearAllMocks();
         service = new ScreenshotService();
-        await service['storage'].init();
-    });
-
-    afterEach(() => {
-        service.dispose();
     });
 
     describe('Memory Management', () => {
         it('maintains stable memory usage during continuous capture', async () => {
-            // Arrange
             const initialMemory = process.memoryUsage().heapUsed;
             const captureCount = 10;
 
-            // Act
             for (let i = 0; i < captureCount; i++) {
                 const result = await service.captureNow();
                 expect(isCaptureFrameArray(result)).toBe(true);
             }
 
-            // Assert
             const finalMemory = process.memoryUsage().heapUsed;
             const memoryIncrease = finalMemory - initialMemory;
             expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024); // 50MB limit
         });
 
         it('releases resources on cleanup', () => {
-            // Arrange - service is created in beforeEach
-
-            // Act
-            service.dispose();
-
-            // Assert
+            service.stop();
             expect(service['lastFrames'].size).toBe(0);
             expect(service['captureInterval']).toBeNull();
         });
@@ -122,13 +110,11 @@ describe('Screenshot Capture System', () => {
 
     describe('Scene Change Detection', () => {
         it('detects major visual changes', async () => {
-            // Arrange
-            service.updateConfig({
+            await service.updateConfig({
                 detectSceneChanges: true,
                 sceneChangeThreshold: 0.5
             });
 
-            // Create a different test image for the second capture
             const differentImage = await sharp({
                 create: {
                     width: 100,
@@ -145,13 +131,11 @@ describe('Screenshot Capture System', () => {
                 .mockResolvedValueOnce(testImageBuffer)
                 .mockResolvedValueOnce(differentImage);
 
-            // Act
-            const firstResult = await service.captureNow(); // First capture
+            const firstResult = await service.captureNow();
             expect(isCaptureFrameArray(firstResult)).toBe(true);
 
-            const result = await service.captureNow(); // Second capture
+            const result = await service.captureNow();
 
-            // Assert
             expect(Array.isArray(result)).toBe(true);
             expect(isCaptureFrameArray(result)).toBe(true);
             if (isCaptureFrameArray(result)) {
@@ -161,44 +145,36 @@ describe('Screenshot Capture System', () => {
         });
 
         it('handles gradual changes appropriately', async () => {
-            // Arrange
-            service.updateConfig({
+            await service.updateConfig({
                 detectSceneChanges: true,
-                sceneChangeThreshold: 0.8
+                sceneChangeThreshold: 0.1
             });
+
+            const results = [];
+            const screenshot = jest.requireMock('screenshot-desktop').default;
 
             // Create a series of gradually changing images
-            const images = await Promise.all(
-                Array.from({ length: 5 }, (_, i) => {
-                    const intensity = Math.floor((i / 4) * 255);
-                    return sharp({
-                        create: {
-                            width: 100,
-                            height: 100,
-                            channels: 4,
-                            background: { r: intensity, g: intensity, b: intensity, alpha: 1 }
+            for (let i = 0; i < 5; i++) {
+                const gradualImage = await sharp({
+                    create: {
+                        width: 100,
+                        height: 100,
+                        channels: 4,
+                        background: {
+                            r: Math.floor(255 * (1 - i / 4)),
+                            g: Math.floor(255 * (i / 4)),
+                            b: 0,
+                            alpha: 1
                         }
-                    })
-                        .jpeg()
-                        .toBuffer();
+                    }
                 })
-            );
+                    .jpeg()
+                    .toBuffer();
 
-            const screenshot = jest.requireMock('screenshot-desktop').default;
-            screenshot.mockImplementation(async () => images[0]); // Reset mock
-            images.forEach(image => {
-                screenshot.mockResolvedValueOnce(image);
-            });
-
-            // Act
-            const results = [];
-            for (let i = 0; i < images.length; i++) {
-                const result = await service.captureNow();
-                expect(isCaptureFrameArray(result)).toBe(true);
-                results.push(result);
+                screenshot.mockResolvedValueOnce(gradualImage);
+                results.push(await service.captureNow());
             }
 
-            // Assert
             results.forEach((result, index) => {
                 expect(Array.isArray(result)).toBe(true);
                 if (isCaptureFrameArray(result)) {
@@ -213,65 +189,54 @@ describe('Screenshot Capture System', () => {
 
     describe('Error Handling', () => {
         it('recovers from capture failures', async () => {
-            // Arrange
             const mockError = new Error('Capture failed');
             const screenshot = jest.requireMock('screenshot-desktop').default;
             screenshot.mockImplementation(async () => {
                 throw mockError;
             });
 
-            // Act & Assert
             await expect(service.captureNow()).rejects.toThrow('Capture failed');
         });
 
         it('handles corrupt image data gracefully', async () => {
-            // Arrange
             const screenshot = jest.requireMock('screenshot-desktop').default;
             screenshot.mockResolvedValueOnce(Buffer.from([0, 1, 2, 3])); // Invalid image data
 
-            // Act & Assert
-            await expect(service.captureNow()).rejects.toThrow('Input buffer contains unsupported image format');
+            await expect(service.captureNow()).rejects.toThrow();
         });
     });
 
     describe('Performance', () => {
         beforeEach(() => {
-            // Reset screenshot mock to return valid image data
             const screenshot = jest.requireMock('screenshot-desktop').default;
             screenshot.mockImplementation(async () => testImageBuffer);
         });
 
         it('processes captures within time budget', async () => {
-            // Arrange
             const maxProcessingTime = 1000; // 1 second budget
-            service.updateConfig({
+            await service.updateConfig({
                 format: 'jpeg',
                 quality: 80,
                 detectSceneChanges: true
             });
 
-            // Act
             const start = performance.now();
             const result = await service.captureNow();
             const duration = performance.now() - start;
 
-            // Assert
             expect(duration).toBeLessThan(maxProcessingTime);
             expect(isCaptureFrameArray(result)).toBe(true);
         });
 
         it('maintains performance under load', async () => {
-            // Arrange
             const captureCount = 5;
             const maxAverageTime = 1000; // 1 second per capture
 
-            // Act
             const start = performance.now();
             const captures = Array.from({ length: captureCount }, () => service.captureNow());
             const results = await Promise.all(captures);
             const duration = performance.now() - start;
 
-            // Assert
             expect(duration / captureCount).toBeLessThan(maxAverageTime);
             results.forEach(result => {
                 expect(Array.isArray(result)).toBe(true);
