@@ -1,9 +1,26 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import * as path from 'path'
+import { HotkeyService } from './services/hotkey/HotkeyService'
+import type { HotkeyConfig } from './services/hotkey/types'
 import { ScreenshotService } from './services/screenshot/ScreenshotService'
-import { HotkeyService } from '../src/electron/services/hotkey/HotkeyService'
 import type { ScreenshotConfig } from './services/screenshot/types'
-import type { HotkeyConfig } from '../src/electron/services/hotkey/types'
+
+interface MessagePayload {
+  success: boolean;
+  data?: {
+    frames?: Array<{
+      buffer: Buffer;
+      metadata: {
+        timestamp: number;
+        format: 'jpeg' | 'png' | 'webp';
+        width: number;
+        height: number;
+        isSceneChange?: boolean;
+      };
+    }>;
+  };
+  error?: string;
+}
 
 const DIST_PATH = path.join(__dirname, '../dist')
 
@@ -83,18 +100,29 @@ function setupScreenshotService() {
   ipcMain.handle('capture-now', async () => {
     try {
       const results = await screenshotService?.captureNow();
-      return {
+      const response: MessagePayload = {
         success: true,
         data: {
-          frames: results?.map(result => ({
-            imageData: result.buffer.toString('base64'),
-            metadata: result.metadata,
-          })),
-        },
+          frames: results?.filter((result): result is CaptureFrame =>
+            'buffer' in result && 'metadata' in result
+          ).map(result => ({
+            buffer: result.buffer,
+            metadata: {
+              timestamp: result.metadata.timestamp,
+              format: result.metadata.format,
+              width: result.metadata.width,
+              height: result.metadata.height,
+              isSceneChange: result.metadata.isSceneChange
+            }
+          }))
+        }
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return { success: false, error: errorMessage };
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      } as MessagePayload;
     }
   });
 
@@ -120,10 +148,12 @@ function setupHotkeyService() {
         const results = await screenshotService.captureNow();
         if (mainWindow && results) {
           results.forEach(result => {
-            mainWindow?.webContents.send('capture-frame', {
-              imageData: result.buffer.toString('base64'),
-              metadata: result.metadata,
-            });
+            if ('buffer' in result && 'metadata' in result) {
+              mainWindow?.webContents.send('capture-frame', {
+                imageData: result.buffer.toString('base64'),
+                metadata: result.metadata,
+              });
+            }
           });
         }
       } catch (error) {

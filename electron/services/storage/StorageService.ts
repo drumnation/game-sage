@@ -1,44 +1,33 @@
-import { app } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { EventEmitter } from 'events';
+import fs from 'fs/promises';
+import path from 'path';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
-import type { StorageConfig, StoredScreenshot, StorageStats, GameContext } from './types';
 import type { CaptureResult } from '../screenshot/types';
+import type { GameContext, StorageConfig, StorageStats, StoredScreenshot } from './types';
 import { DEFAULT_STORAGE_CONFIG } from './types';
 
 export class StorageService extends EventEmitter {
     private config: StorageConfig;
-    private metadata: Map<string, StoredScreenshot> = new Map();
-    private initialized = false;
+    private metadata: Map<string, StoredScreenshot>;
+    private initialized: boolean;
 
-    constructor(config: Partial<StorageConfig> = {}) {
+    constructor(config?: Partial<StorageConfig>) {
         super();
         this.config = { ...DEFAULT_STORAGE_CONFIG, ...config };
+        this.metadata = new Map();
+        this.initialized = false;
     }
 
-    public async initialize(): Promise<void> {
+    public async init(): Promise<void> {
         if (this.initialized) return;
 
         try {
-            // Ensure base directory exists
-            const baseDir = this.getBasePath();
-            await fs.mkdir(baseDir, { recursive: true });
-
-            // Load metadata from disk
+            await fs.mkdir(this.config.basePath, { recursive: true });
             await this.loadMetadata();
-
-            // Clean up old files
-            await this.cleanup();
-
             this.initialized = true;
         } catch (error) {
-            this.emit('error', {
-                action: 'initialize',
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw error;
+            throw new Error(`Failed to initialize storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 
@@ -46,6 +35,10 @@ export class StorageService extends EventEmitter {
         screenshot: CaptureResult,
         gameContext?: GameContext
     ): Promise<StoredScreenshot> {
+        if (!('buffer' in screenshot) || !('metadata' in screenshot)) {
+            throw new Error('Invalid screenshot data');
+        }
+
         if (!this.initialized) {
             throw new Error('Storage service not initialized');
         }
@@ -62,7 +55,6 @@ export class StorageService extends EventEmitter {
             // Get file size
             const stats = await fs.stat(filePath);
 
-            // Create metadata
             const storedScreenshot: StoredScreenshot = {
                 id,
                 path: filePath,
@@ -90,8 +82,55 @@ export class StorageService extends EventEmitter {
         }
     }
 
-    public async getScreenshot(id: string): Promise<StoredScreenshot | null> {
-        return this.metadata.get(id) || null;
+    private generateFileName(timestamp: number, gameContext?: GameContext): string {
+        const date = new Date(timestamp);
+        const dateStr = date.toISOString().replace(/[:.]/g, '-');
+        const contextStr = gameContext ? `-${gameContext.gameId}-${gameContext.eventType}` : '';
+        return `screenshot-${dateStr}${contextStr}.png`;
+    }
+
+    private getFilePath(fileName: string): string {
+        return path.join(this.config.basePath, fileName);
+    }
+
+    private async processAndSaveImage(buffer: Buffer, filePath: string): Promise<void> {
+        await sharp(buffer)
+            .png({ quality: 90 })
+            .toFile(filePath);
+    }
+
+    private async loadMetadata(): Promise<void> {
+        try {
+            const metadataPath = path.join(this.config.basePath, 'metadata.json');
+            const data = await fs.readFile(metadataPath, 'utf-8');
+            const parsed = JSON.parse(data);
+            this.metadata = new Map(Object.entries(parsed));
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+                throw error;
+            }
+        }
+    }
+
+    private async saveMetadata(): Promise<void> {
+        const metadataPath = path.join(this.config.basePath, 'metadata.json');
+        const data = Object.fromEntries(this.metadata);
+        await fs.writeFile(metadataPath, JSON.stringify(data, null, 2));
+    }
+
+    private async enforceStorageLimits(): Promise<void> {
+        const stats = await this.getStorageStats();
+        if (stats.totalSize > this.config.maxStorageSize) {
+            const screenshots = Array.from(this.metadata.values())
+                .sort((a, b) => a.createdAt - b.createdAt);
+
+            while (stats.totalSize > this.config.maxStorageSize && screenshots.length > 0) {
+                const oldest = screenshots.shift();
+                if (oldest) {
+                    await this.deleteScreenshot(oldest.id);
+                }
+            }
+        }
     }
 
     public async deleteScreenshot(id: string): Promise<void> {
@@ -112,174 +151,31 @@ export class StorageService extends EventEmitter {
         }
     }
 
-    public async getStats(): Promise<StorageStats> {
+    public async getStorageStats(): Promise<StorageStats> {
         const screenshots = Array.from(this.metadata.values());
         const totalSize = screenshots.reduce((sum, s) => sum + s.size, 0);
-        const timestamps = screenshots.map(s => s.createdAt);
-
         return {
+            count: screenshots.length,
             totalSize,
-            fileCount: screenshots.length,
-            oldestFile: Math.min(...timestamps),
-            newestFile: Math.max(...timestamps),
+            availableSize: this.config.maxStorageSize - totalSize,
         };
     }
 
-    public async updateConfig(config: Partial<StorageConfig>): Promise<void> {
-        const oldConfig = { ...this.config };
-        this.config = { ...this.config, ...config };
+    public async updateConfig(newConfig: Partial<StorageConfig>): Promise<void> {
+        const oldPath = this.config.basePath;
+        this.config = { ...this.config, ...newConfig };
 
-        // If base path changed, move files
-        if (oldConfig.basePath !== this.config.basePath) {
-            await this.migrateFiles(oldConfig.basePath, this.config.basePath);
-        }
-
-        await this.saveMetadata();
-    }
-
-    private async processAndSaveImage(buffer: Buffer, filePath: string): Promise<void> {
-        const sharpInstance = sharp(buffer);
-
-        switch (this.config.format) {
-            case 'png':
-                await sharpInstance
-                    .png({ quality: this.config.quality })
-                    .toFile(filePath);
-                break;
-            case 'webp':
-                await sharpInstance
-                    .webp({ quality: this.config.quality })
-                    .toFile(filePath);
-                break;
-            case 'jpeg':
-            default:
-                await sharpInstance
-                    .jpeg({ quality: this.config.quality })
-                    .toFile(filePath);
-        }
-    }
-
-    private async enforceStorageLimits(): Promise<void> {
-        const stats = await this.getStats();
-
-        if (stats.totalSize > this.config.maxStorageSize) {
-            const screenshots = Array.from(this.metadata.values())
-                .sort((a, b) => a.createdAt - b.createdAt);
-
-            while (stats.totalSize > this.config.maxStorageSize && screenshots.length > 0) {
-                const oldest = screenshots.shift();
-                if (oldest) {
-                    await this.deleteScreenshot(oldest.id);
-                }
-            }
-        }
-    }
-
-    private async cleanup(): Promise<void> {
-        const now = Date.now();
-        const maxAge = this.config.retentionDays * 24 * 60 * 60 * 1000;
-
-        for (const [id, screenshot] of this.metadata.entries()) {
-            if (now - screenshot.createdAt > maxAge) {
-                await this.deleteScreenshot(id);
-            }
-        }
-    }
-
-    private getBasePath(): string {
-        return path.join(app.getPath('userData'), this.config.basePath);
-    }
-
-    private getFilePath(fileName: string): string {
-        const baseDir = this.getBasePath();
-        const date = new Date();
-        let relativePath: string;
-
-        switch (this.config.organizationStrategy) {
-            case 'date':
-                relativePath = path.join(
-                    date.getFullYear().toString(),
-                    (date.getMonth() + 1).toString().padStart(2, '0'),
-                    date.getDate().toString().padStart(2, '0')
+        if (newConfig.basePath && newConfig.basePath !== oldPath) {
+            await fs.mkdir(newConfig.basePath, { recursive: true });
+            for (const screenshot of this.metadata.values()) {
+                const newPath = path.join(
+                    newConfig.basePath,
+                    path.basename(screenshot.path)
                 );
-                break;
-            case 'game':
-                relativePath = '';
-                break;
-            case 'flat':
-            default:
-                relativePath = '';
-        }
-
-        return path.join(baseDir, relativePath, `${fileName}.${this.config.format}`);
-    }
-
-    private generateFileName(timestamp: number, gameContext?: GameContext): string {
-        let name = this.config.namingPattern;
-        const date = new Date(timestamp);
-
-        // Replace placeholders
-        name = name.replace('{timestamp}', date.toISOString().replace(/[:.]/g, '-'));
-        name = name.replace('{game}', gameContext?.name || 'unknown');
-        name = name.replace('{scene}', gameContext?.scene || 'unknown');
-
-        return name;
-    }
-
-    private async loadMetadata(): Promise<void> {
-        try {
-            const metadataPath = path.join(this.getBasePath(), 'metadata.json');
-            const data = await fs.readFile(metadataPath, 'utf-8');
-            const parsed = JSON.parse(data);
-
-            this.metadata.clear();
-            for (const [id, screenshot] of Object.entries(parsed)) {
-                this.metadata.set(id, screenshot as StoredScreenshot);
+                await fs.rename(screenshot.path, newPath);
+                screenshot.path = newPath;
             }
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-                throw error;
-            }
-        }
-    }
-
-    private async saveMetadata(): Promise<void> {
-        const metadataPath = path.join(this.getBasePath(), 'metadata.json');
-        const data = Object.fromEntries(this.metadata.entries());
-        await fs.writeFile(metadataPath, JSON.stringify(data, null, 2));
-    }
-
-    private async migrateFiles(oldBasePath: string, newBasePath: string): Promise<void> {
-        const oldPath = path.join(app.getPath('userData'), oldBasePath);
-        const newPath = path.join(app.getPath('userData'), newBasePath);
-
-        // Create new directory
-        await fs.mkdir(newPath, { recursive: true });
-
-        // Move all files
-        for (const [id, screenshot] of this.metadata.entries()) {
-            const oldFilePath = screenshot.path;
-            const fileName = path.basename(oldFilePath);
-            const newFilePath = path.join(newPath, fileName);
-
-            try {
-                await fs.rename(oldFilePath, newFilePath);
-                this.metadata.set(id, {
-                    ...screenshot,
-                    path: newFilePath,
-                });
-            } catch (error) {
-                console.error(`Failed to move file ${oldFilePath}:`, error);
-            }
-        }
-
-        await this.saveMetadata();
-
-        // Try to remove old directory if empty
-        try {
-            await fs.rmdir(oldPath);
-        } catch {
-            // Ignore errors if directory is not empty
+            await this.saveMetadata();
         }
     }
 } 

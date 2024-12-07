@@ -1,13 +1,8 @@
 // Root component
-export { Screenshot } from './Screenshot';
+export { default as Screenshot } from './Screenshot';
 
 // Types
-export type {
-    Screenshot as ScreenshotType,
-    ScreenshotManagerProps,
-    ScreenshotGridProps,
-    ScreenshotControlsProps,
-} from './Screenshot.types';
+export * from './Screenshot.types';
 
 // Components
 export * from './components'; 

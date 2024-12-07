@@ -1,34 +1,50 @@
-import React from 'react';
-import { ScreenshotManager, ScreenshotGrid } from './components';
-import { ScreenshotContainer } from './Screenshot.styles';
-import type { Screenshot as ScreenshotType } from './Screenshot.types';
-
-interface ScreenshotProps {
-    screenshots: ScreenshotType[];
-    selectedId?: string;
-    onCapture: () => Promise<void>;
-    onSelect: (id: string) => void;
-    onError?: (error: Error) => void;
-}
+import React, { useEffect } from 'react';
+import { Button, List, Card, message } from 'antd';
+import type { ScreenshotProps } from './Screenshot.types';
 
 export const Screenshot: React.FC<ScreenshotProps> = ({
     screenshots,
     selectedId,
     onCapture,
     onSelect,
-    onError,
+    onError
 }) => {
+    useEffect(() => {
+        if (onError) {
+            message.error('Failed to capture screenshot');
+        }
+    }, [onError]);
+
     return (
-        <ScreenshotContainer>
-            <ScreenshotManager
-                onCapture={onCapture}
-                onError={onError}
+        <div>
+            <Button onClick={onCapture}>
+                Capture Screenshot
+            </Button>
+
+            <List
+                grid={{ gutter: 16, column: 3 }}
+                dataSource={screenshots}
+                renderItem={screenshot => (
+                    <List.Item>
+                        <Card
+                            hoverable
+                            cover={<img alt="screenshot" src={screenshot.imageData} />}
+                            onClick={() => onSelect(screenshot.id)}
+                            style={{
+                                borderColor: selectedId === screenshot.id ? '#1890ff' : undefined,
+                                borderWidth: selectedId === screenshot.id ? 2 : 1
+                            }}
+                        >
+                            <Card.Meta
+                                title={new Date(screenshot.metadata.timestamp).toLocaleString()}
+                                description={`${screenshot.metadata.width}x${screenshot.metadata.height}`}
+                            />
+                        </Card>
+                    </List.Item>
+                )}
             />
-            <ScreenshotGrid
-                screenshots={screenshots}
-                selectedId={selectedId}
-                onSelect={onSelect}
-            />
-        </ScreenshotContainer>
+        </div>
     );
-}; 
+};
+
+export default Screenshot; 

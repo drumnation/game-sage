@@ -1,0 +1,46 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ],
+            "@atoms/*": [
+                "src/components/atoms/*"
+            ],
+            "@molecules/*": [
+                "src/components/molecules/*"
+            ],
+            "@organisms/*": [
+                "src/components/organisms/*"
+            ],
+            "@features/*": [
+                "src/features/*"
+            ],
+            "@services/*": [
+                "src/services/*"
+            ],
+            "@context/*": [
+                "src/context/*"
+            ],
+            "@store/*": [
+                "src/store/*"
+            ],
+            "@styles/*": [
+                "src/styles/*"
+            ],
+            "@test/*": [
+                "src/test/*"
+            ],
+            "@types/*": [
+                "src/types/*"
+            ],
+            "@electron/*": [
+                "electron/*"
+            ],
+            "@electron-services/*": [
+                "electron/services/*"
+            ]
+        }
+    }
+}

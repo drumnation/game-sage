@@ -1,340 +1,292 @@
-// React + Styled Components + Ant Design + Redux + TypeScript + Electron + Vite .cursorrules
-
-// Prefer functional components with hooks
-const preferFunctionalComponents = true;
-
-// Use TypeScript for type safety
-const useTypeScript = true;
-
-// Component Structure Rules
-const componentStructureRules = [
-  "Create a dedicated folder at `./components/{componentName}/` for each component",
-  "Use descriptive, PascalCase names for folders and components (e.g., `UserProfile/UserProfile.tsx`)",
-  "Avoid `index.tsx` files; use named component files instead (e.g., `ComponentName.tsx`)",
-  "Maintain consistent naming between folders, files, and exports",
-  "Include a README.md in each component folder documenting purpose, dependencies, and usage",
-  "Document props and types comprehensively in the README or a dedicated file",
-  "Organize subcomponents in a `components/` subfolder with atomic design principles (atoms, molecules, organisms)",
-  "Keep component hierarchy shallow (maximum 2-3 levels deep)",
-  "Prevent unnecessary prop drilling by using context, Redux, or Electron IPC communication where applicable",
-  "Use path aliases (@atoms/*, @molecules/*, etc.) for importing components",
-  "Maintain clear separation between atomic design levels using appropriate aliases",
-  "Keep imports organized by alias type for better readability",
-];
-
-// Electron Best Practices
-const electronBestPractices = [
-  "Use `contextBridge` to expose secure APIs to the renderer process",
-  "Separate main and renderer processes with clear responsibilities",
-  "Never expose Node.js APIs directly to the renderer process",
-  "Use IPC channels for communication between processes, ensuring data validation and sanitization",
-  "Leverage `Electron Forge`, `Electron Builder`, or `electron-updater` for packaging and distribution",
-  "Follow Electron's security guidelines (e.g., disable `nodeIntegration` and enable `contextIsolation`)",
-  "Keep the `main.ts` file focused on lifecycle management (e.g., app initialization, window creation)",
-  "Store persistent data using secure, cross-platform libraries like `electron-store` or `sqlite3`",
-  "Minimize heavy computations in the renderer process to avoid UI blocking; use workers or offload to the main process",
-  "Use preload scripts to define and limit renderer process APIs",
-  "Bundle and minify assets to improve application performance",
-];
-
-// Vite Best Practices
-const viteBestPractices = [
-  "Use Vite's plugin system to extend functionality (e.g., `vite-plugin-electron`, `vite-plugin-react`)",
-  "Enable Vite's `esbuild` for fast and efficient builds",
-  "Utilize Vite's `optimizeDeps` for pre-bundling dependencies to improve startup time",
-  "Configure path aliases in `vite.config.ts` for cleaner imports",
-  "Leverage Vite's hot module replacement (HMR) during development for instant feedback",
-  "Optimize Electron's main process by using Vite's multi-page build configuration",
-  "Keep the Vite configuration modular by splitting large configurations into separate files or using plugins",
-  "Bundle preload scripts separately in the Vite configuration to align with Electron's requirements",
-  "Use `vite-plugin-tsconfig-paths` to ensure TypeScript path aliases work seamlessly with Vite",
-  "Enable sourcemaps for debugging in development but disable them for production builds to improve performance",
-];
-
-// TypeScript Best Practices
-const typeScriptBestPractices = [
-  "Create a `{componentName}.types.ts` file for component props, state, and utility types",
-  "Use strict TypeScript checks to enhance type safety",
-  "Export all relevant types from `index.ts` files for easy imports",
-  "Document types with JSDoc for maintainability and IDE support",
-  "Type IPC channels and events with strong TypeScript interfaces to avoid runtime errors",
-];
-
-// Styling Rules
-const stylingRules = [
-  "Create a `{componentName}.styles.ts` file for styled-components or CSS modules",
-  "Ensure styling is theme-aware and responsive",
-  "Use reusable style constants for consistent design",
-  "Implement accessibility considerations in styles",
-];
-
-const electronSpecificStylingRules = [
-  "Respect system color schemes using prefers-color-scheme media queries",
-  "Support OS-level text scaling",
-  "Ensure touch targets are sized appropriately for both mouse and touch input",
-  "Implement focus indicators that work across both dark and light themes",
-  "Handle window-level zoom accessibility features"
-];
-
-// JSX Rules
-const jsxRules = [
-  "Create `{componentName}.tsx` for the component logic",
-  "Ensure clean, focused logic with proper prop validation",
-  "Implement error boundaries and loading states where needed",
-  "Check for reusability and extend existing components if similar functionality exists",
-  "Follow accessibility standards (e.g., ARIA roles, keyboard navigation)",
-];
-
-// Redux and State Management
-const reduxRules = [
-  "Use Redux Toolkit for state management",
-  "Organize state logic into slices using the slice pattern",
-  "Use `createAsyncThunk` for async operations",
-  "Access state with selectors to minimize unnecessary renders",
-  "Create reusable typed hooks (`useAppSelector`, `useAppDispatch`)",
-  "Group Redux state, actions, and hooks within `features/` folders",
-];
-
-// Performance Optimization Rules
-const performanceOptimizationRules = [
-  "Memoize child components with `React.memo` when appropriate",
-  "Extract inline values into `useMemo` or constants",
-  "Use `useCallback` for inline functions to prevent unnecessary re-renders",
-  "Implement code splitting and lazy loading for large component trees",
-  "Profile rendering to identify bottlenecks and optimize accordingly",
-  "Use Vite's `splitChunks` to optimize production builds",
-];
-
-// Error Handling Rules
-const errorHandlingRules = [
-  "Add error boundaries to catch errors in the component tree",
-  "Handle asynchronous errors with `try-catch` or `.catch`",
-  "Provide fallback UI elements for error states",
-  "Log meaningful error messages for debugging and monitoring",
-  "Test components for error scenarios to ensure robustness",
-  "Validate all data sent through IPC channels to prevent security risks",
-];
-
-// Folder Structure
-const folderStructure = `
-src/
-  components/
-    {ComponentName}/
-      {ComponentName}.tsx
-      {ComponentName}.styles.ts
-      {ComponentName}.types.ts
-      components/   // Subcomponents
-      README.md
-  features/
-    <featureName>/
-      components/
-      slices/
-      hooks/
-  store/
-    store.ts
-    hooks.ts
-  styles/
-    theme.ts
-    globalStyles.ts
-  hooks/
-  pages/
-  utils/
-  main/
-    main.ts
-    preload.ts
-    ipc/         // IPC handlers and channel definitions
-  renderer/
-    App.tsx
-  vite.config.ts
-`;
-
-// Additional Instructions
-const additionalInstructions = [
-  "1. Follow KISS (Keep It Simple, Stupid) and YAGNI (You Aren't Gonna Need It) principles for simplicity.",
-  "2. Adhere to SOLID principles and write clean, maintainable code.",
-  "3. Optimize performance by minimizing re-renders, lazy-loading components, and optimizing data fetching.",
-  "4. Document all changes, including purpose and rationale, in commit messages and READMEs.",
-  "5. Use path aliases for better maintainability in large projects.",
-  "6. Ensure accessibility standards are met in all components.",
-  "7. Validate and sanitize data passed between Electron's main and renderer processes.",
-  "8. Use Vite's plugin ecosystem to extend functionality effectively.",
-  "9. Ensure pnpm dependency hoisting does not introduce version conflicts or inconsistencies.",
-  "10. Optimize build times and bundle sizes with Vite's fast build system."
-].join('\n');
-
-// Example Integration
-const exampleIntegration = `
-import React, { useCallback } from 'react';
-import styled, { ThemeProvider } from 'styled-components';
-import { Button, ConfigProvider } from 'antd';
-import { ipcRenderer } from 'electron';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from './store/store';
-
-// Styled Component wrapping Ant Design Button
-const StyledButton = styled(Button)\`
-  background-color: \${({ theme }) => theme.primaryColor};
-  color: \${({ theme }) => theme.textColor};
-
-  &:hover {
-    background-color: \${({ theme }) => theme.hoverColor};
-  }
-\`;
-
-// Redux Selector Example
-const selectCount = (state: RootState) => state.counter.value;
-
-const App = () => {
-  const count = useSelector(selectCount);
-  const dispatch = useDispatch();
-
-  const increment = useCallback(() => {
-    ipcRenderer.send('increment-counter');
-    dispatch({ type: 'counter/increment' });
-  }, [dispatch]);
-
-  return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#1890ff' } }}>
-      <ThemeProvider theme={{ primaryColor: '#1890ff', textColor: '#ffffff' }}>
-        <div>
-          <h1>Count: {count}</h1>
-          <StyledButton onClick={increment}>Increment</StyledButton>
-        </div>
-      </ThemeProvider>
-    </ConfigProvider>
-  );
-};
-
-export default App;
-`;
-
-// Path Alias Configuration
-const pathAliasRules = {
-  baseAliases: {
-    "@/*": "src/*",                           // Base source directory
-    "@atoms/*": "src/components/atoms/*",      // Atomic components - smallest building blocks
-    "@molecules/*": "src/components/molecules/*", // Atomic components - groups of atoms
-    "@organisms/*": "src/components/organisms/*", // Atomic components - complex UI sections
-    "@features/*": "src/features/*",           // Feature modules
-    "@services/*": "src/services/*",           // Service layer
-    "@utils/*": "src/utils/*",                 // Utility functions and helpers
-    "@styles/*": "src/styles/*",               // Global styles and theme
-    "@test/*": "src/test/*",                  // Test utilities and helpers
-    "@hooks/*": "src/hooks/*",                // Shared hooks
-    "@pages/*": "src/pages/*",                // Page components
-    "@store/*": "src/store/*",                // Redux store
-    "@main/*": "src/main/*",                  // Electron main process
-    "@renderer/*": "src/renderer/*",           // Electron renderer process
-    "@components/*": "src/components/*"        // Shared component utilities
+export const CursorProjectRules = {
+  /**
+   * Core Development Principles
+   */
+  corePrinciples: {
+    preferFunctionalComponents: true,
+    useTypeScript: true,
+    useAtomicDesign: true,
+    framework: 'React + Styled Components + Redux + TypeScript + Electron + Vite',
   },
 
-  usageGuidelines: [
-    "Always use path aliases instead of relative imports when crossing module boundaries",
-    "Prefer relative imports only for files within the same module/component folder",
-    "Ensure all imports follow the established alias pattern for consistency",
-    "Use the most specific alias possible (e.g., @atoms/* over @/* for atomic components)",
-  ],
+  /**
+   * Project Structure
+   */
+  structure: {
+    description: 'Complete project structure including root configuration, build tools, and source code',
+    layout: `
+├── electron/                     # Electron-specific configuration
+│   ├── services/                # Electron services
+│   │   ├── hotkey/             # Hotkey management
+│   │   ├── screenshot/         # Screenshot functionality
+│   │   ├── shortcuts/          # Keyboard shortcuts
+│   │   └── storage/           # Data persistence
+│   ├── types/                  # Electron type definitions
+│   ├── main.ts                 # Main process entry
+│   ├── preload.ts             # Preload scripts
+│   └── types.ts               # Shared types
 
-  examples: {
-    correct: [
-      'import { Button } from "@atoms/Button";',
-      'import { UserCard } from "@molecules/UserCard";',
-      'import { Header } from "@organisms/Header";',
-      'import { userService } from "@services/user";',
-      'import { formatDate } from "@utils/date";'
-    ],
-    incorrect: [
-      'import { Button } from "../../../components/atoms/Button";',
-      'import { UserCard } from "@/components/molecules/UserCard";',
-      'import { Header } from "../../organisms/Header";'
+├── src/                         # Application source code
+│   ├── components/             # Shared components
+│   │   ├── atoms/             # UI primitives
+│   │   ├── molecules/         # Composite components
+│   │   └── organisms/         # Complex components
+│   ├── features/              # Feature modules
+│   │   └── {FeatureName}/     # Feature-specific code
+│   │       ├── components/    # Feature components
+│   │       ├── hooks/         # Feature hooks
+│   │       └── README.md      # Feature documentation
+│   ├── context/               # React contexts
+│   ├── services/              # Application services
+│   ├── store/                 # Redux store
+│   ├── styles/                # Styling and theme
+│   ├── test/                  # Test files
+│   ├── types/                 # Type definitions
+│   └── __fixtures__/         # Test fixtures
+
+├── rules/                       # Project rules and guidelines
+│   ├── general/               # General coding rules
+│   ├── phases/                # Development phases
+│   ├── component.rules.ts     # Component standards
+│   ├── jest.rules.ts         # Testing standards
+│   ├── tdd.rules.ts          # TDD guidelines
+│   └── test-debug.rules.ts   # Debugging guidelines
+
+├── scripts/                     # Build and maintenance scripts
+├── dist-electron/               # Electron build output
+├── public/                      # Static assets
+
+# Configuration Files
+├── .cursorrules                # Cursor IDE configuration
+├── .eslintrc.cjs               # ESLint configuration
+├── electron-builder.json5      # Electron builder config
+├── jest.config.ts              # Jest configuration
+├── tsconfig.json               # TypeScript configuration
+├── vite.config.ts              # Vite configuration
+└── package.json                # Project dependencies`,
+  },
+
+  /**
+   * Component Development Process
+   */
+  componentDevelopment: {
+    phases: [
+      {
+        name: 'PLANNING',
+        description: 'Define component purpose and structure',
+        rules: [
+          'Define clear component purpose and boundaries',
+          'Determine atomic level (atom/molecule/organism)',
+          'Plan component hierarchy following atomic design',
+          'Identify required props, state, and events',
+          'Consider performance implications',
+          'Plan error handling and loading states'
+        ],
+        atomicRules: {
+          atoms: [
+            'Must be UI primitives with no business logic',
+            'Must be completely domain-agnostic',
+            'Should wrap third-party components or HTML elements',
+            'Must be highly reusable across any project'
+          ],
+          molecules: [
+            'Must be compositions of atoms only',
+            'Should remain relatively domain-agnostic',
+            'Can have specific purposes while staying generic'
+          ],
+          organisms: [
+            'Can compose atoms and molecules',
+            'Can include minimal business logic if generic',
+            'Must maintain reasonable reusability'
+          ]
+        }
+      },
+      {
+        name: 'IMPLEMENTATION',
+        structure: `
+ComponentName/
+  ├── ComponentName.tsx          # Main component
+  ├── ComponentName.types.ts     # TypeScript types
+  ├── ComponentName.styles.ts    # Styled components
+  ├── ComponentName.hook.ts      # Custom hooks
+  ├── index.ts                  # Exports
+  ├── components/               # Subcomponents
+  └── README.md                 # Documentation`,
+        files: [
+          {
+            name: 'TYPES',
+            rules: [
+              'Define comprehensive interfaces',
+              'Document with JSDoc',
+              'Include all necessary type exports',
+              'Define event handler types',
+              'Include state types'
+            ]
+          },
+          {
+            name: 'STYLES',
+            rules: [
+              'Use theme tokens from src/styles/theme.ts',
+              'Implement responsive design',
+              'Support system color schemes',
+              'Follow accessibility guidelines'
+            ]
+          },
+          {
+            name: 'HOOKS',
+            rules: [
+              'Extract complex logic to hooks',
+              'Handle side effects properly',
+              'Implement error handling',
+              'Consider performance optimizations'
+            ]
+          },
+          {
+            name: 'COMPONENT',
+            rules: [
+              'Keep JSX clean and focused',
+              'Implement error boundaries',
+              'Add loading states',
+              'Ensure accessibility'
+            ]
+          }
+        ]
+      },
+      {
+        name: 'TESTING',
+        rules: [
+          'Write comprehensive tests',
+          'Test error states',
+          'Test loading states',
+          'Test user interactions',
+          'Test accessibility'
+        ]
+      }
     ]
   },
 
-  configuration: {
-    required: [
-      "Configure aliases in both tsconfig.json and vite.config.ts",
-      "Ensure baseUrl is set to '.' in tsconfig.json",
-      "Use path.resolve in vite.config.ts for alias resolution"
+  /**
+   * Electron Integration
+   */
+  electron: {
+    mainProcess: [
+      'Keep main process code focused on system interaction',
+      'Implement proper error handling',
+      'Use typed IPC communication',
+      'Follow security best practices'
     ],
-    files: {
-      tsconfig: {
-        paths: {
-          "@/*": ["src/*"],
-          "@atoms/*": ["src/components/atoms/*"],
-          "@components/*": ["src/components/*"],
-          "@electron/*": ["electron/*"],
-          "@features/*": ["src/features/*"],
-          "@hooks/*": ["src/hooks/*"],
-          "@main/*": ["src/main/*"],
-          "@molecules/*": ["src/components/molecules/*"],
-          "@organisms/*": ["src/components/organisms/*"],
-          "@pages/*": ["src/pages/*"],
-          "@renderer/*": ["src/renderer/*"],
-          "@services/*": ["src/services/*"],
-          "@store/*": ["src/store/*"],
-          "@styles/*": ["src/styles/*"],
-          "@test/*": ["src/test/*"],
-          "@utils/*": ["src/utils/*"],
-        }
-      },
-      vite: {
-        resolve: {
-          alias: {
-            "@": "./src",
-            "@atoms": "./src/components/atoms",
-            "@components": "./src/components",
-            "@electron": "./electron",
-            "@features": "./src/features",
-            "@hooks": "./src/hooks",
-            "@main": "./src/main",
-            "@molecules": "./src/components/molecules",
-            "@organisms": "./src/components/organisms",
-            "@pages": "./src/pages",
-            "@renderer": "./src/renderer",
-            "@services": "./src/services",
-            "@store": "./src/store",
-            "@styles": "./src/styles",
-            "@test": "./src/test",
-            "@utils": "./src/utils",
-          }
-        }
-      }
+    services: [
+      'Organize by feature/responsibility',
+      'Implement proper error handling',
+      'Use TypeScript for type safety',
+      'Document public APIs'
+    ],
+    security: [
+      'Use contextBridge for preload scripts',
+      'Validate all IPC communication',
+      'Follow least privilege principle',
+      'Sanitize all user input'
+    ]
+  },
+
+  /**
+   * State Management
+   */
+  stateManagement: {
+    redux: [
+      'Use Redux Toolkit',
+      'Organize by feature slices',
+      'Implement proper error handling',
+      'Use typed selectors'
+    ],
+    local: [
+      'Use React hooks for local state',
+      'Consider component hierarchy',
+      'Avoid prop drilling',
+      'Use context when appropriate'
+    ]
+  },
+
+  /**
+   * Design System Integration
+   */
+  designSystem: {
+    theme: {
+      location: 'src/styles/theme.ts',
+      rules: [
+        'Use theme tokens for all values',
+        'Support system color schemes',
+        'Follow spacing scale',
+        'Use semantic color names'
+      ]
     }
   },
 
-  folderStructure: `
-src/
-  components/
-    atoms/       # Basic building blocks (Button, Input, Text)
-    molecules/   # Combinations of atoms (SearchBar, UserCard)
-    organisms/   # Complex UI sections (Header, Sidebar)
-  features/      # Feature-specific code
-  services/      # Business logic and API calls
-  utils/         # Helper functions and utilities
-  hooks/         # Shared hooks
-  pages/         # Page components
-  store/         # Redux store
-  main/          # Electron main process
-  renderer/      # Electron renderer process
-  styles/        # Global styles
-  test/          # Test utilities
-  `
-};
+  /**
+   * Path Aliases
+   */
+  pathAliases: {
+    baseAliases: {
+      "@/*": "src/*",
+      "@atoms/*": "src/components/atoms/*",
+      "@molecules/*": "src/components/molecules/*",
+      "@organisms/*": "src/components/organisms/*",
+      "@features/*": "src/features/*",
+      "@services/*": "src/services/*",
+      "@styles/*": "src/styles/*",
+      "@context/*": "src/context/*",
+      "@store/*": "src/store/*",
+      "@test/*": "src/test/*",
+      "@types/*": "src/types/*",
+      "@electron/*": "electron/*",
+      "@electron-services/*": "electron/services/*"
+    }
+  },
 
-export {
-  preferFunctionalComponents,
-  useTypeScript,
-  componentStructureRules,
-  electronBestPractices,
-  viteBestPractices,
-  typeScriptBestPractices,
-  stylingRules,
-  electronSpecificStylingRules,
-  jsxRules,
-  reduxRules,
-  performanceOptimizationRules,
-  errorHandlingRules,
-  folderStructure,
-  additionalInstructions,
-  pathAliasRules,
+  /**
+   * Performance Guidelines
+   */
+  performance: {
+    rules: [
+      'Use React.memo for pure components',
+      'Optimize re-renders',
+      'Implement code splitting',
+      'Monitor bundle size',
+      'Profile component performance'
+    ]
+  },
+
+  /**
+   * Testing Requirements
+   */
+  testing: {
+    components: [
+      'Unit tests for components',
+      'Integration tests for features',
+      'Accessibility tests',
+      'Performance tests'
+    ],
+    electron: [
+      'Test IPC communication',
+      'Test service integration',
+      'Test error handling',
+      'Mock system APIs'
+    ]
+  },
+
+  /**
+   * Warning Signs
+   */
+  warnings: [
+    'Component files over 300 lines',
+    'Deep component hierarchies',
+    'Mixed concerns in files',
+    'Missing type definitions',
+    'Inline styles',
+    'Hard-coded values',
+    'Direct Node.js API usage in renderer',
+    'Untyped IPC channels',
+    'Poor error handling',
+    'Missing documentation'
+  ]
 };

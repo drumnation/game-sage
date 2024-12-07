@@ -1,15 +1,10 @@
-import type { ElectronAPI, ScreenshotConfig } from '../../../electron/types/electron-api';
-
-const mockConfig: ScreenshotConfig = {
-    captureInterval: 1000,
-    width: 1920,
-    height: 1080,
-    format: 'jpeg'
-};
+import type { ElectronAPI } from '../../../electron/types/electron-api';
 
 export const mockElectronAPI: ElectronAPI = {
     on: jest.fn(),
     off: jest.fn(),
     updateConfig: jest.fn().mockResolvedValue(undefined),
-    getConfig: jest.fn().mockResolvedValue(mockConfig)
+    getConfig: jest.fn().mockResolvedValue({ captureInterval: 1000 }),
+    captureNow: jest.fn().mockResolvedValue(undefined),
+    listDisplays: jest.fn().mockResolvedValue([])
 }; 

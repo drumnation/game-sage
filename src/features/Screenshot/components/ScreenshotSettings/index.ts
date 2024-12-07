@@ -1,1 +1,1 @@
-// This component has been removed 
+export { ScreenshotSettings } from './ScreenshotSettings'; 

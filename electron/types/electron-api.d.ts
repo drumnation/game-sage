@@ -6,13 +6,27 @@ type ChannelTypeMap = {
     'main-process-message': MessagePayload;
 };
 
+export interface DisplayInfo {
+    id: string;
+    name: string;
+    bounds: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+    isPrimary: boolean;
+}
+
 export interface CaptureFrameMetadata {
     timestamp: number;
     displayId: string;
     width: number;
     height: number;
-    format: string;
+    format: 'jpeg' | 'png' | 'webp';
     isSceneChange?: boolean;
+    windowId?: number;
+    previousSceneScore?: number;
 }
 
 export interface CaptureFrame {
@@ -21,26 +35,33 @@ export interface CaptureFrame {
 }
 
 export interface CaptureError {
-    error: string;
+    code: string;
+    message: string;
 }
 
 export interface ScreenshotConfig {
     captureInterval: number;
     width?: number;
     height?: number;
-    format?: string;
+    format?: 'jpeg' | 'png' | 'webp';
     quality?: number;
     detectSceneChanges?: boolean;
     sceneChangeThreshold?: number;
+    compression?: number;
+    activeDisplays?: string[];
 }
 
 export type PartialScreenshotConfig = Partial<ScreenshotConfig>;
+
+export type CaptureResult = CaptureFrame | CaptureError;
 
 export interface ElectronAPI {
     on(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
     off(channel: string, callback: (data: CaptureFrame | CaptureError) => void): void;
     updateConfig(config: PartialScreenshotConfig): Promise<void>;
     getConfig(): Promise<ScreenshotConfig>;
+    captureNow(): Promise<CaptureFrame | CaptureError>;
+    listDisplays(): Promise<DisplayInfo[]>;
 }
 
 declare global {

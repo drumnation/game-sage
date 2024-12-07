@@ -1,4 +1,12 @@
-import type { ScreenshotMetadata } from '../screenshot/types';
+import type {
+    ScreenshotConfig as ElectronScreenshotConfig,
+    CaptureResult,
+    DisplayInfo,
+    CaptureFrameMetadata as ScreenshotMetadata
+} from '../../types/electron-api';
+
+export type { CaptureResult, DisplayInfo, ScreenshotMetadata };
+export type ScreenshotConfig = ElectronScreenshotConfig;
 
 export interface StorageConfig {
     basePath: string;
@@ -7,7 +15,7 @@ export interface StorageConfig {
     maxStorageSize: number; // in bytes
     retentionDays: number;
     organizationStrategy: 'date' | 'game' | 'flat';
-    namingPattern: string; // e.g., "{timestamp}_{game}_{scene}"
+    namingPattern: string;
 }
 
 export interface StoredScreenshot {
@@ -20,16 +28,16 @@ export interface StoredScreenshot {
 }
 
 export interface GameContext {
-    name: string;
+    gameId: string;
+    eventType: string;
+    name?: string;
     scene?: string;
-    tags?: string[];
 }
 
 export interface StorageStats {
+    count: number;
     totalSize: number;
-    fileCount: number;
-    oldestFile: number;
-    newestFile: number;
+    availableSize: number;
 }
 
 export const DEFAULT_STORAGE_CONFIG: StorageConfig = {
@@ -39,5 +47,5 @@ export const DEFAULT_STORAGE_CONFIG: StorageConfig = {
     maxStorageSize: 1024 * 1024 * 1024, // 1GB
     retentionDays: 30,
     organizationStrategy: 'date',
-    namingPattern: '{timestamp}_{scene}',
+    namingPattern: '{timestamp}_{scene}'
 }; 

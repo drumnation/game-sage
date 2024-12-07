@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.paths.json",
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
@@ -21,57 +22,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@atoms/*": [
-        "src/components/atoms/*"
-      ],
-      "@components/*": [
-        "src/components/*"
-      ],
-      "@electron/*": [
-        "electron/*"
-      ],
-      "@features/*": [
-        "src/features/*"
-      ],
-      "@hooks/*": [
-        "src/hooks/*"
-      ],
-      "@main/*": [
-        "src/main/*"
-      ],
-      "@molecules/*": [
-        "src/components/molecules/*"
-      ],
-      "@organisms/*": [
-        "src/components/organisms/*"
-      ],
-      "@pages/*": [
-        "src/pages/*"
-      ],
-      "@renderer/*": [
-        "src/renderer/*"
-      ],
-      "@services/*": [
-        "src/services/*"
-      ],
-      "@store/*": [
-        "src/store/*"
-      ],
-      "@styles/*": [
-        "src/styles/*"
-      ],
-      "@test/*": [
-        "src/test/*"
-      ],
-      "@utils/*": [
-        "src/utils/*"
-      ]
-    }
+    "typeRoots": [
+      "./electron/types",
+      "./node_modules/@types"
+    ]
   },
   "include": [
     "src",

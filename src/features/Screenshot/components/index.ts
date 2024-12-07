@@ -1,5 +1,5 @@
 // Main components
 export { ScreenshotManager } from './ScreenshotManager';
 export { ScreenshotGrid } from './ScreenshotGrid';
-export { ScreenshotControls } from './ScreenshotControls';
-export { ScreenshotPreview } from './ScreenshotPreview';
+export { ScreenshotSettings } from './ScreenshotSettings';
+export { MonitorSelection } from './MonitorSelection';

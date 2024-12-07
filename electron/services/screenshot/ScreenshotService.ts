@@ -30,7 +30,7 @@ export class ScreenshotService extends EventEmitter {
     }
 
     public async initialize(): Promise<void> {
-        await this.storageService.initialize();
+        await this.storageService.init();
     }
 
     public async start(): Promise<void> {
@@ -63,18 +63,28 @@ export class ScreenshotService extends EventEmitter {
     }
 
     public async captureNow(gameContext?: GameContext): Promise<CaptureResult[]> {
-        const displays = await this.getDisplays();
-        const results: CaptureResult[] = [];
+        try {
+            const displays = await this.getDisplays();
+            const results: CaptureResult[] = [];
 
-        for (const display of displays) {
-            const result = await this.captureDisplay(display);
-            if (result) {
-                results.push(result);
-                await this.storageService.saveScreenshot(result, gameContext);
+            for (const display of displays) {
+                try {
+                    const result = await this.captureDisplay(display);
+                    if (result) {
+                        results.push(result);
+                        await this.storageService.saveScreenshot(result, gameContext);
+                    }
+                } catch (error) {
+                    this.emit('error', error);
+                    throw error;
+                }
             }
-        }
 
-        return results;
+            return results;
+        } catch (error) {
+            this.emit('error', error);
+            throw error;
+        }
     }
 
     public updateConfig(newConfig: Partial<ScreenshotConfig>): void {
@@ -90,8 +100,12 @@ export class ScreenshotService extends EventEmitter {
         return displays.map(display => ({
             id: display.id.toString(),
             name: display.label || `Display ${display.id}`,
-            width: display.bounds.width,
-            height: display.bounds.height,
+            bounds: {
+                x: display.bounds.x,
+                y: display.bounds.y,
+                width: display.bounds.width,
+                height: display.bounds.height
+            },
             isPrimary: display.id === screen.getPrimaryDisplay().id,
         }));
     }
@@ -102,32 +116,37 @@ export class ScreenshotService extends EventEmitter {
             const metadata: ScreenshotMetadata = {
                 timestamp: Date.now(),
                 displayId: display.id,
-                width: display.width,
-                height: display.height,
-                format: this.config.format,
+                width: display.bounds.width,
+                height: display.bounds.height,
+                format: this.config.format || 'jpeg'
             };
 
             // Process the image with sharp
-            const processedBuffer = await this.processImage(buffer);
+            try {
+                const processedBuffer = await this.processImage(buffer);
 
-            // Detect scene changes if enabled
-            if (this.config.detectSceneChanges) {
-                const lastFrame = this.lastFrames.get(display.id);
-                if (lastFrame) {
-                    const changeScore = await this.calculateSceneChange(lastFrame, processedBuffer);
-                    metadata.previousSceneScore = changeScore;
-                    metadata.isSceneChange = changeScore > this.config.sceneChangeThreshold;
+                // Detect scene changes if enabled
+                if (this.config.detectSceneChanges && this.config.sceneChangeThreshold) {
+                    const lastFrame = this.lastFrames.get(display.id);
+                    if (lastFrame) {
+                        const changeScore = await this.calculateSceneChange(lastFrame, processedBuffer);
+                        metadata.previousSceneScore = changeScore;
+                        metadata.isSceneChange = changeScore > this.config.sceneChangeThreshold;
+                    }
+                    this.lastFrames.set(display.id, processedBuffer);
                 }
-                this.lastFrames.set(display.id, processedBuffer);
-            }
 
-            return {
-                buffer: processedBuffer,
-                metadata,
-            };
+                return {
+                    buffer: processedBuffer,
+                    metadata,
+                };
+            } catch (error) {
+                this.emit('error', error);
+                throw error;
+            }
         } catch (error) {
             this.emit('error', error);
-            return null;
+            throw error;
         }
     }
 

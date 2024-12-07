@@ -51,7 +51,6 @@ release/
 dist-electron/
 **/Electron Framework.framework/
 **/Electron.app/
-**/Electron
 
 # Additional build artifacts
 *.app

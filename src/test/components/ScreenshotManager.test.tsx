@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
-import { ScreenshotManager } from '@features/Screenshot';
-import { theme } from '@styles/theme';
+import { ScreenshotManager } from '../../features/Screenshot/components/ScreenshotManager';
+import { theme } from '../../styles/theme';
 
 // Mock electron API
 const mockElectronAPI = {
@@ -53,6 +53,8 @@ describe('ScreenshotManager', () => {
             <ScreenshotManager
                 onCapture={onCapture}
                 onError={onError}
+                isCapturing={false}
+                error={null}
             />
         );
 
@@ -70,6 +72,8 @@ describe('ScreenshotManager', () => {
             <ScreenshotManager
                 onCapture={onCapture}
                 onError={onError}
+                isCapturing={false}
+                error={null}
             />
         );
 
@@ -94,6 +98,8 @@ describe('ScreenshotManager', () => {
             <ScreenshotManager
                 onCapture={onCapture}
                 onError={onError}
+                isCapturing={false}
+                error={null}
             />
         );
 

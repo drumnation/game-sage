@@ -1,7 +1,11 @@
 import { createContext, useContext } from 'react';
-import type { ElectronAPI } from '../../electron/types/electron-api';
+import type { ElectronAPI } from '@electron/types';
 
-export const ElectronContext = createContext<ElectronAPI | null>(null);
+interface ElectronContextType {
+    api: ElectronAPI;
+}
+
+const ElectronContext = createContext<ElectronContextType | null>(null);
 
 export const useElectron = () => {
     const context = useContext(ElectronContext);
@@ -9,4 +13,7 @@ export const useElectron = () => {
         throw new Error('useElectron must be used within an ElectronProvider');
     }
     return context;
-}; 
+};
+
+export const ElectronProvider = ElectronContext.Provider;
+export default ElectronContext; 
