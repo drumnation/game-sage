@@ -55,4 +55,5 @@ export interface AIState {
     error: string | null;
     responses: AIResponse[];
     currentMode: GameMode;
+    isMuted: boolean;
 } 

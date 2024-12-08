@@ -14,6 +14,7 @@ const initialState: AIState = {
     error: null,
     responses: [],
     currentMode: 'tactical' as GameMode,
+    isMuted: false,
 };
 
 export const analyzeScreenshot = createAsyncThunk<
@@ -75,6 +76,9 @@ const aiSlice = createSlice({
             state.settings.mode = action.payload;
             state.currentMode = action.payload;
         },
+        toggleMute: (state) => {
+            state.isMuted = !state.isMuted;
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -102,5 +106,6 @@ export const {
     addCustomInstruction,
     removeCustomInstruction,
     setMode,
+    toggleMute,
 } = aiSlice.actions;
 export default aiSlice.reducer; 
