@@ -89,7 +89,7 @@ const aiSlice = createSlice({
             .addCase(analyzeScreenshot.fulfilled, (state, action) => {
                 state.isAnalyzing = false;
                 state.currentAnalysis = action.payload;
-                state.responses = [...state.responses, action.payload];
+                state.responses = [action.payload, ...state.responses];
                 state.error = null;
             })
             .addCase(analyzeScreenshot.rejected, (state, action) => {
