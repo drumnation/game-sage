@@ -1,4 +1,4 @@
-import type { ScreenshotConfig } from '@electron/types';
+import type { ScreenshotConfig } from '@electron/types/index';
 
 /**
  * Screenshot metadata containing capture information
@@ -54,14 +54,16 @@ export interface ScreenshotProps {
     onSingleCapture: () => void;
     isCapturing: boolean;
     isTransitioning?: boolean;
+    isFlashing?: boolean;
 }
 
 export interface ScreenshotControlsProps {
     onCapture: () => void;
-    onSingleCapture?: () => void;
+    onSingleCapture: () => void;
     isCapturing: boolean;
     isTransitioning?: boolean;
     isIntervalMode?: boolean;
+    isFlashing?: boolean;
 }
 
 export interface MonitorSelectionProps {

@@ -4,7 +4,8 @@ import { ScreenshotService } from './services/screenshot/ScreenshotService'
 import { HotkeyService } from './services/hotkey/HotkeyService'
 import type { ScreenshotConfig } from './services/screenshot/types'
 import type { HotkeyConfig } from './services/hotkey/types'
-import type { DisplayInfo, CaptureResult } from './types'
+import type { DisplayInfo, CaptureResult } from './services/screenshot/types'
+import { AIService } from './services/ai/AIService'
 
 interface APIResponse<T = void> {
   success: boolean;
@@ -17,6 +18,7 @@ const DIST_PATH = join(__dirname, '../dist')
 let mainWindow: BrowserWindow | null = null
 let screenshotService: ScreenshotService | null = null
 let hotkeyService: HotkeyService | null = null
+let aiService: AIService | null = null
 
 const WINDOW_WIDTH = 1200
 const WINDOW_HEIGHT = 900
@@ -66,8 +68,12 @@ function createWindow() {
   }
 }
 
-function setupScreenshotService() {
+async function setupScreenshotService() {
   screenshotService = new ScreenshotService();
+
+  console.log('Initializing screenshot service...');
+  await screenshotService.init();
+  console.log('Screenshot service initialized');
 
   screenshotService.on('error', (error: Error) => {
     if (mainWindow) {
@@ -141,20 +147,26 @@ function setupScreenshotService() {
 
   ipcMain.handle('get-screenshot-config', async () => {
     try {
-      const config = screenshotService?.getConfig();
+      console.log('IPC: Handling get-screenshot-config request');
+      const config = await screenshotService?.getConfig();
+      console.log('IPC: Retrieved config:', config);
       return { success: true, data: config } as APIResponse<ScreenshotConfig>;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('IPC: Error getting screenshot config:', errorMessage);
       return { success: false, error: errorMessage } as APIResponse;
     }
   });
 
   ipcMain.handle('list-displays', async () => {
     try {
+      console.log('IPC: Handling list-displays request');
       const displays = await screenshotService?.getDisplays();
+      console.log('IPC: Retrieved displays:', displays);
       return { success: true, data: displays || [] } as APIResponse<DisplayInfo[]>;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('IPC: Error listing displays:', errorMessage);
       return { success: false, error: errorMessage } as APIResponse;
     }
   });
@@ -214,10 +226,19 @@ function setupHotkeyService() {
   });
 }
 
-app.whenReady().then(() => {
+function createServices() {
+  aiService = new AIService();
+
+  return {
+    aiService,
+  };
+}
+
+app.whenReady().then(async () => {
   createWindow();
-  setupScreenshotService();
+  await setupScreenshotService();
   setupHotkeyService();
+  createServices();
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) {

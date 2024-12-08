@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'antd';
 import { Screenshot } from '../../features/Screenshot';
 import { AISettings } from '../../features/AI/components/AISettings';
-import type { ScreenshotConfig } from '@electron/types';
+import type { ScreenshotConfig } from '@electron/types/index';
 import { useLeftSidebar } from './LeftSidebar.hook';
 import { LeftSidebarContainer } from './LeftSidebar.styles';
 
@@ -12,6 +12,7 @@ interface LeftSidebarProps {
     onCapture: () => void;
     onSingleCapture: () => void;
     isCapturing: boolean;
+    isFlashing?: boolean;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -20,6 +21,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     onCapture,
     onSingleCapture,
     isCapturing,
+    isFlashing,
 }) => {
     const { activeTab, tabItems, handleTabChange } = useLeftSidebar();
 
@@ -34,6 +36,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     onCapture={onCapture}
                     onSingleCapture={onSingleCapture}
                     isCapturing={isCapturing}
+                    isFlashing={isFlashing}
                 />
             ),
         },

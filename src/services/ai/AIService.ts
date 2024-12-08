@@ -1,90 +1,64 @@
-import OpenAI from 'openai';
+import type { AIAnalysisRequest } from '../../../window';
 import { AIServiceConfig, AIResponse, AIError, GameMode } from './types';
-import { PromptManager, PromptConfig } from './PromptManager';
-
-interface OpenAIError {
-  response?: {
-    status?: number;
-    data?: {
-      error?: {
-        code?: string;
-      };
-    };
-  };
-  code?: string;
-  message: string;
-}
-
 export class AIService {
-  private client: OpenAI;
   private config: AIServiceConfig;
 
   constructor(config: AIServiceConfig) {
-    this.client = new OpenAI({
-      apiKey: config.apiKey,
-      baseURL: config.baseURL,
-    });
     this.config = config;
+    console.log('[Renderer] AIService initialized with config:', {
+      baseURL: config.baseURL,
+      gameInfo: config.gameInfo,
+      hasApiKey: !!config.apiKey,
+    });
   }
 
   async analyzeScreenshot(
     imageBase64: string,
     mode: GameMode,
-    previousResponses?: AIResponse[],
+    _previousResponses?: AIResponse[],
   ): Promise<AIResponse> {
     try {
-      if (!imageBase64) {
-        throw new Error('Invalid image data');
-      }
-
-      const promptConfig: PromptConfig = {
+      console.log('[Renderer] Sending screenshot for analysis:', {
         mode,
-        gameInfo: this.config.gameInfo,
-        customInstructions: this.config.customInstructions,
-        previousResponses,
-      };
-
-      const { systemPrompt, userPrompt } = PromptManager.composePrompt(promptConfig);
-
-      const response = await this.client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          } as const,
-          {
-            role: "user",
-            content: [
-              { type: "text", text: userPrompt } as const,
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${imageBase64}`,
-                }
-              } as const
-            ],
-          } as const,
-        ],
-        max_tokens: 300,
-        temperature: 0.7,
+        imageSize: imageBase64.length,
+        gameInfo: this.config.gameInfo?.name,
       });
 
+      const api = window.electronAPI;
+      if (!api) {
+        throw new Error('Electron API not available');
+      }
+
+      const response = await api.analyzeImage({
+        imageBase64,
+        mode,
+        gameInfo: this.config.gameInfo,
+        customInstructions: this.config.customInstructions
+      } as AIAnalysisRequest);
+
+      console.log('[Renderer] Received AI analysis response:', {
+        hasContent: !!response?.content,
+        contentLength: response?.content?.length,
+      });
+
+      if (!response) {
+        throw new Error('No response from IPC call');
+      }
+
       const aiResponse: AIResponse = {
-        content: response.choices[0].message.content || '',
+        content: response.content,
         timestamp: Date.now(),
         mode,
-        confidence: response.choices[0].finish_reason === 'stop' ? 1 : 0.5,
+        confidence: 1,
       };
 
       return aiResponse;
     } catch (error) {
-      const err = error as OpenAIError;
-      const status = err.response?.status || 500;
-      const aiError = new Error(err.message) as AIError;
-      aiError.code = err.response?.data?.error?.code || err.code || 'unknown';
-      aiError.status = status;
-      aiError.retryable = status >= 500 || err.code === 'ECONNABORTED';
+      console.error('[Renderer] Error in analyzeScreenshot:', error);
+      const aiError = new Error(error instanceof Error ? error.message : 'Unknown error') as AIError;
+      aiError.code = 'ipc_error';
+      aiError.status = 500;
+      aiError.retryable = true;
       throw aiError;
     }
   }

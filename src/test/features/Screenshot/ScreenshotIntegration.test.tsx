@@ -1,8 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { HotkeyService } from '../../../../electron/services/hotkey/HotkeyService';
-import type { ElectronAPI } from '../../../../electron/types';
+import { HotkeyService } from '@electron/services/hotkey/HotkeyService';
+import type { ElectronAPI } from '../../../../window';
 import { Screenshot } from '../../../features/Screenshot';
 import type { Screenshot as ScreenshotType } from '../../../features/Screenshot/Screenshot.types';
 import { ScreenshotPreview } from '../../../features/ScreenshotPreview/ScreenshotPreview';
@@ -88,7 +88,7 @@ jest.mock('electron', () => ({
 }));
 
 // Mock the screenshot capture service
-jest.mock('../../../../electron/services/screenshot/ScreenshotService', () => ({
+jest.mock('@electron/services/screenshot/ScreenshotService', () => ({
     captureFrame: jest.fn().mockResolvedValue({
         buffer: Buffer.from('test'),
         metadata: {

@@ -2,8 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   ElectronAPI,
   ValidChannel,
-  ChannelData
-} from './types';
+  ChannelData,
+  AIAnalysisRequest
+} from './types/index';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -30,7 +31,12 @@ const api: ElectronAPI = {
   startCapture: () => ipcRenderer.invoke('start-capture'),
   stopCapture: () => ipcRenderer.invoke('stop-capture'),
   updateHotkey: (action, accelerator) => ipcRenderer.invoke('update-hotkey', action, accelerator),
-  getHotkeys: () => ipcRenderer.invoke('get-hotkeys')
+  getHotkeys: () => ipcRenderer.invoke('get-hotkeys'),
+
+  // AI Analysis
+  analyzeImage: (request: AIAnalysisRequest) => {
+    return ipcRenderer.invoke('ai:analyze-image', request);
+  }
 };
 
 // Expose the electron object with hotkey event handlers
@@ -51,3 +57,4 @@ const electron = {
 
 contextBridge.exposeInMainWorld('electronAPI', api);
 contextBridge.exposeInMainWorld('electron', electron);
+

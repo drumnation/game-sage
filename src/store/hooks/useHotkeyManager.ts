@@ -1,15 +1,15 @@
-import { useEffect, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
+import { useCallback, useEffect } from 'react';
 import {
-    setHotkeyPressed,
-    setCaptureHotkey,
-    setIsRecordingHotkey,
-    setPressedKeys,
     selectCaptureHotkey,
     selectIsRecordingHotkey,
     selectPressedKeys,
+    setCaptureHotkey,
+    setHotkeyPressed,
+    setIsRecordingHotkey,
+    setPressedKeys,
 } from '../slices/hotkeySlice';
-import type { ElectronAPI, APIResponse } from '@electron/types';
+import { useAppDispatch, useAppSelector } from '../store';
+import type { APIResponse, ElectronAPI } from '@electron/types/index';
 
 export const useHotkeyManager = () => {
     const dispatch = useAppDispatch();

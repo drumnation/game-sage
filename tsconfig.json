@@ -44,6 +44,8 @@
   "include": [
     "src",
     "electron",
+    "window.d.ts",
+    "global.d.ts"
   ],
   "references": [
     {

@@ -10,6 +10,7 @@ export const MainApp: React.FC<MainAppProps> = ({ onError }) => {
         screenshots,
         currentIndex,
         isCapturing,
+        isFlashing,
         handleDisplaysChange,
         handleSettingsChange,
         handleCapture,
@@ -53,6 +54,7 @@ export const MainApp: React.FC<MainAppProps> = ({ onError }) => {
                 onCapture={handleCapture}
                 onSingleCapture={handleSingleCapture}
                 isCapturing={isCapturing}
+                isFlashing={isFlashing}
             />
             <CenterPanel
                 screenshot={screenshots[currentIndex] || null}

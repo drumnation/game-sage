@@ -1,14 +1,13 @@
 import React from 'react';
-import { ConfigProvider, App as AntApp, theme } from 'antd';
+import { ConfigProvider, App as AntApp, theme as antTheme } from 'antd';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import { ThemeProvider } from 'styled-components';
 import { store, persistor } from './store/store';
 import { MainApp } from './pages/MainApp';
 import { GlobalStyle } from './styles/GlobalStyle';
-import { theme as appTheme } from './styles/theme';
 
-const App: React.FC = () => {
+// Inner component that uses AntApp.useApp hook
+const AppContent: React.FC = () => {
   const { message } = AntApp.useApp();
 
   const handleError = (error: Error) => {
@@ -16,14 +15,20 @@ const App: React.FC = () => {
   };
 
   return (
+    <>
+      <GlobalStyle />
+      <MainApp onError={handleError} />
+    </>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
+        <ConfigProvider theme={{ algorithm: antTheme.darkAlgorithm }}>
           <AntApp>
-            <ThemeProvider theme={appTheme}>
-              <GlobalStyle />
-              <MainApp onError={handleError} />
-            </ThemeProvider>
+            <AppContent />
           </AntApp>
         </ConfigProvider>
       </PersistGate>

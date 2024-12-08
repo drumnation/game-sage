@@ -1,5 +1,13 @@
+export type * from '../services/screenshot/types';
+export type * from '../services/hotkey/types';
+export type * from '../services/ai/types';
+
 // Core types
 export type ImageFormat = 'jpeg' | 'png' | 'webp';
+
+// Re-export AI types for use in ElectronAPI
+import type { AIAnalysisRequest, AIAnalysisResponse } from '../services/ai/types';
+export { AIAnalysisRequest, AIAnalysisResponse };
 
 export interface MessagePayload {
     message: string;
@@ -93,6 +101,11 @@ export interface ElectronAPI {
     listDisplays(): Promise<APIResponse<DisplayInfo[]>>;
     startCapture(): Promise<APIResponse<void>>;
     stopCapture(): Promise<APIResponse<void>>;
+
+    // Hotkey Management
     updateHotkey(action: string, accelerator: string): Promise<APIResponse<void>>;
     getHotkeys(): Promise<APIResponse<{ [key: string]: string }>>;
+
+    // AI Analysis
+    analyzeImage(request: AIAnalysisRequest): Promise<AIAnalysisResponse>;
 } 

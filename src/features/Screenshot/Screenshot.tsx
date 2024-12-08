@@ -4,7 +4,7 @@ import { MonitorSelection } from './components/MonitorSelection';
 import { ScreenshotControls } from './components/ScreenshotControls';
 import type { ScreenshotProps } from './Screenshot.types';
 import { ScreenshotContainer } from './Screenshot.styles';
-import type { ScreenshotConfig } from '@electron/types';
+import type { ScreenshotConfig } from '@electron/types/index';
 
 interface SettingsChangeParams extends Partial<ScreenshotConfig> {
     useHotkey?: boolean;
@@ -17,6 +17,7 @@ export const Screenshot: React.FC<ScreenshotProps> = ({
     onSingleCapture,
     isCapturing,
     isTransitioning = false,
+    isFlashing = false,
 }) => {
     const [useHotkey, setUseHotkey] = useState(false);
     const [isHotkeyCapturing, setIsHotkeyCapturing] = useState(false);
@@ -78,6 +79,7 @@ export const Screenshot: React.FC<ScreenshotProps> = ({
                 isCapturing={isCapturing}
                 isTransitioning={isTransitioning}
                 isIntervalMode={!useHotkey}
+                isFlashing={isFlashing}
             />
         </ScreenshotContainer>
     );

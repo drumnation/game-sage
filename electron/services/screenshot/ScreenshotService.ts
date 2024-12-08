@@ -2,7 +2,7 @@ import { screen, systemPreferences } from 'electron';
 import screenshot from 'screenshot-desktop';
 import sharp from 'sharp';
 import { EventEmitter } from 'events';
-import type { DisplayInfo, CaptureResult, ScreenshotConfig } from '../../types';
+import type { DisplayInfo, CaptureResult, ScreenshotConfig } from './types';
 import { ScreenshotMetadata, DEFAULT_CONFIG } from './types';
 import { StorageConfig, StorageFormat } from '../storage/types';
 import { StorageService } from '../storage/StorageService';
@@ -13,6 +13,7 @@ export class ScreenshotService extends EventEmitter {
     private lastFrames: Map<string, Buffer>;
     private storage: StorageService;
     private frameCount: number = 0;
+    private initialized: boolean = false;
 
     constructor() {
         super();
@@ -32,29 +33,45 @@ export class ScreenshotService extends EventEmitter {
         };
 
         this.storage = new StorageService(storageConfig);
-        this.initializeStorage().catch(error => {
-            this.emit('error', error);
-        });
     }
 
-    private async initializeStorage(): Promise<void> {
+    public async init(): Promise<void> {
+        if (this.initialized) {
+            return;
+        }
+
         try {
+            console.log('Initializing screenshot service...');
             await this.storage.init();
             const savedConfig = await this.storage.loadConfig<ScreenshotConfig>('screenshot');
             if (savedConfig) {
+                console.log('Loaded saved config:', savedConfig);
                 this.config = { ...this.config, ...savedConfig };
+            } else {
+                console.log('No saved config found, using defaults:', this.config);
             }
+            this.initialized = true;
+            console.log('Screenshot service initialized');
         } catch (error) {
             console.error('Failed to initialize storage:', error);
             throw error;
         }
     }
 
-    public getConfig(): ScreenshotConfig {
+    private async ensureInitialized(): Promise<void> {
+        if (!this.initialized) {
+            await this.init();
+        }
+    }
+
+    public async getConfig(): Promise<ScreenshotConfig> {
+        await this.ensureInitialized();
+        console.log('Getting screenshot config:', this.config);
         return { ...this.config };
     }
 
     public async getDisplays(): Promise<DisplayInfo[]> {
+        console.log('Getting displays...');
         const displays = screen.getAllDisplays();
         console.log('Raw Electron displays:', displays.map(d => ({ id: d.id, label: d.label, bounds: d.bounds })));
 
