@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2024-03-08
+
+### Changed
+
+- Enhanced screenshot service with improved type definitions
+- Updated screenshot capture workflow with better error handling
+- Improved test coverage for GameAnalysis component
+- Enhanced storage service test suite
+- Updated mock electron helpers for better testing
+
+### Fixed
+
+- Type definitions in screenshot service
+- Screenshot capture hook improvements
+- Storage service test reliability
+
 ## [0.3.3] - 2024-03-07
 
 ### Added
