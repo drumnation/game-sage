@@ -1,5 +1,5 @@
 {
-  "captureInterval": 30000,
+  "captureInterval": 30,
   "format": "jpeg",
   "quality": 80,
   "detectSceneChanges": true,
@@ -9,5 +9,5 @@
   "activeDisplays": [
     "1"
   ],
-  "useHotkey": false
+  "useHotkey": true
 }
