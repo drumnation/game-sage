@@ -35,6 +35,7 @@ export interface DisplayInfo {
 
 export interface CaptureResult {
     buffer: Buffer;
+    imageData: string;
     metadata: ScreenshotMetadata;
 }
 

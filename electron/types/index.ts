@@ -39,6 +39,7 @@ export interface CaptureFrameMetadata {
 
 export interface CaptureFrame {
     buffer: Buffer;
+    imageData: string;
     metadata: CaptureFrameMetadata;
 }
 

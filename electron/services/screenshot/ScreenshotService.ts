@@ -266,6 +266,7 @@ export class ScreenshotService extends EventEmitter {
 
             return {
                 buffer: processedBuffer,
+                imageData: processedBuffer.toString('base64'),
                 metadata,
             };
         } catch (error) {

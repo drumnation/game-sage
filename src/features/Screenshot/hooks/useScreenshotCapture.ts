@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { App } from 'antd';
-import type { ScreenshotConfig, APIResponse } from '@electron/types/index';
+import type { ScreenshotConfig, APIResponse, CaptureFrame, CaptureError } from '@electron/types/index';
 import type { Screenshot } from '../Screenshot.types';
 import { useAI } from '../../../hooks/useAI';
 
@@ -14,21 +14,6 @@ export interface ScreenshotCaptureHook {
     handleSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
     handleCapture: () => Promise<void>;
     isFlashing: boolean;
-}
-
-// This type represents how the frame data arrives in the renderer
-interface CaptureFrameData {
-    imageData: string;
-    metadata: {
-        timestamp: number;
-        displayId: string;
-        format: string;
-        width: number;
-        height: number;
-        isSceneChange?: boolean;
-        previousSceneScore?: number;
-        isHotkeyCapture?: boolean;
-    };
 }
 
 export const useScreenshotCapture = () => {
@@ -74,8 +59,21 @@ export const useScreenshotCapture = () => {
         setTimeout(() => setIsFlashing(false), 200); // Flash for 200ms
     }, []);
 
-    const handleCaptureFrame = useCallback((data: CaptureFrameData) => {
+    const handleCaptureFrame = useCallback((data: CaptureFrame | CaptureError) => {
         try {
+            // Check if this is a CaptureError
+            if ('error' in data || !('metadata' in data)) {
+                if ('message' in data) {
+                    console.error('Capture error:', data.message);
+                    message.error(data.message);
+                } else {
+                    console.error('Invalid capture data received');
+                    message.error('Failed to process screenshot');
+                }
+                return;
+            }
+
+            // At this point, TypeScript knows data is CaptureFrame
             // Check if this frame is too close to the last capture
             if (lastCaptureRef.current) {
                 const timeDiff = data.metadata.timestamp - lastCaptureRef.current.timestamp;

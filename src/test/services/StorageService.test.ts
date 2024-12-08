@@ -125,7 +125,8 @@ describe('StorageService', () => {
                 birthtime: new Date()
             };
             const mockScreenshot: CaptureFrame = {
-                buffer: testImageBuffer,
+                buffer: Buffer.from('test'),
+                imageData: 'base64_encoded_string',
                 metadata: {
                     timestamp: Date.now(),
                     displayId: '1',
@@ -167,6 +168,7 @@ describe('StorageService', () => {
 
             const mockScreenshot: CaptureFrame = {
                 buffer: testImageBuffer,
+                imageData: Buffer.from(testImageBuffer).toString('base64'),
                 metadata: {
                     timestamp: Date.now(),
                     displayId: '1',

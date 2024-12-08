@@ -22,5 +22,9 @@ export const mockElectronAPI: ElectronAPI = {
     startCapture: jest.fn().mockResolvedValue({ success: true }),
     stopCapture: jest.fn().mockResolvedValue({ success: true }),
     updateHotkey: jest.fn().mockResolvedValue({ success: true }),
-    getHotkeys: jest.fn().mockResolvedValue({ success: true, data: { captureNow: 'CommandOrControl+Shift+C' } })
+    getHotkeys: jest.fn().mockResolvedValue({ success: true, data: { captureNow: 'CommandOrControl+Shift+C' } }),
+    analyzeImage: jest.fn().mockResolvedValue({
+        analysis: 'Mock analysis',
+        error: null
+    }),
 }; 
