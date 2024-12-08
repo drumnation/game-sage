@@ -16,6 +16,7 @@ export interface ScreenshotCaptureHook {
     isFlashing: boolean;
 }
 
+// This type represents how the frame data arrives in the renderer
 interface CaptureFrameData {
     imageData: string;
     metadata: {
@@ -98,35 +99,42 @@ export const useScreenshotCapture = () => {
                 displayId: data.metadata.displayId
             };
 
-            setScreenshots(prev => {
-                const newScreenshot = {
-                    id: `${Date.now()}-${prev.length}`,
-                    imageData: `data:image/jpeg;base64,${data.imageData}`,
-                    metadata: {
-                        timestamp: data.metadata.timestamp,
-                        displayId: data.metadata.displayId,
-                        format: data.metadata.format,
-                        width: data.metadata.width,
-                        height: data.metadata.height,
-                        isSceneChange: data.metadata.isSceneChange,
-                        previousSceneScore: data.metadata.previousSceneScore,
-                        isHotkeyCapture: data.metadata.isHotkeyCapture,
-                    },
-                };
+            // Create new screenshot object
+            const newScreenshot = {
+                id: `${Date.now()}-${screenshots.length}`,
+                imageData: `data:image/jpeg;base64,${data.imageData}`,
+                metadata: data.metadata,
+            };
 
-                if (data.metadata.isHotkeyCapture) {
-                    message.success('Screenshot captured');
-                    // Trigger AI analysis for hotkey captures
-                    analyze(data.imageData);
-                }
+            // Add the new screenshot first
+            setScreenshots(prev => [...prev, newScreenshot]);
 
-                return [...prev, newScreenshot];
-            });
+            if (data.metadata.isHotkeyCapture) {
+                message.success('Screenshot captured');
+                // Trigger AI analysis for hotkey captures
+                analyze(data.imageData).then(aiResponse => {
+                    setScreenshots(prev => {
+                        // Find and update the screenshot with AI response
+                        const index = prev.findIndex(s => s.id === newScreenshot.id);
+                        if (index === -1) return prev;
+
+                        const updated = [...prev];
+                        updated[index] = {
+                            ...updated[index],
+                            aiResponse
+                        };
+                        return updated;
+                    });
+                }).catch((error: Error) => {
+                    console.error('Failed to analyze screenshot:', error);
+                    message.error('Failed to analyze screenshot');
+                });
+            }
         } catch (error) {
             console.error('Error handling capture frame:', error);
             message.error('Failed to process screenshot');
         }
-    }, [message, analyze]);
+    }, [message, analyze, screenshots.length]);
 
     const handleSettingsChange = useCallback((settings: Partial<ScreenshotConfig>) => {
         const api = window.electronAPI;
@@ -221,6 +229,9 @@ export const useScreenshotCapture = () => {
     useEffect(() => {
         const api = window.electronAPI;
         if (!api) return;
+
+        // Set max listeners to prevent warning
+        api.setMaxListeners(20);
 
         // Always listen for capture frames
         api.on('capture-frame', handleCaptureFrame);

@@ -1,4 +1,5 @@
 import type { ScreenshotConfig } from '@electron/types/index';
+import type { AIResponse } from '../../services/ai/types';
 
 /**
  * Screenshot metadata containing capture information
@@ -21,6 +22,7 @@ export interface Screenshot {
     id: string;
     imageData: string;
     metadata: ScreenshotMetadata;
+    aiResponse?: AIResponse;
 }
 
 /**

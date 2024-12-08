@@ -4,11 +4,18 @@ import { Card } from '../../components/atoms/Card';
 import { GameAnalysisContainer, AnalysisContent, LoadingOverlay } from './GameAnalysis.styles';
 import type { RootState } from '../../store/types';
 
-export const GameAnalysis: React.FC = () => {
-    const aiResponse = useAppSelector((state: RootState) => state.ai.currentAnalysis);
+interface GameAnalysisProps {
+    screenshot?: {
+        aiResponse?: {
+            content: string;
+        };
+    } | null;
+}
+
+export const GameAnalysis: React.FC<GameAnalysisProps> = ({ screenshot }) => {
     const isLoading = useAppSelector((state: RootState) => state.ai.isAnalyzing);
 
-    if (!aiResponse && !isLoading) {
+    if (!screenshot?.aiResponse && !isLoading) {
         return (
             <GameAnalysisContainer>
                 <Card>
@@ -25,7 +32,7 @@ export const GameAnalysis: React.FC = () => {
             <Card>
                 {isLoading && <LoadingOverlay>Analyzing screenshot...</LoadingOverlay>}
                 <AnalysisContent>
-                    {aiResponse?.content || 'No analysis available'}
+                    {screenshot?.aiResponse?.content || 'No analysis available'}
                 </AnalysisContent>
             </Card>
         </GameAnalysisContainer>

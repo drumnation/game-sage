@@ -55,7 +55,9 @@ export class AIService {
             mode,
             gameInfo: gameInfo?.name,
             imageSize: imageBase64.length,
-            hasCustomInstructions: !!customInstructions?.length
+            hasCustomInstructions: !!customInstructions?.length,
+            customInstructions,
+            gameCustomInstructions: gameInfo?.customInstructions
         });
 
         try {
@@ -68,6 +70,7 @@ export class AIService {
                 if (gameInfo.customInstructions?.length) {
                     systemPrompt += '\nGame-specific instructions:\n' +
                         gameInfo.customInstructions.map(i => `- ${i}`).join('\n');
+                    console.log('[Main] Added game-specific instructions:', gameInfo.customInstructions);
                 }
             }
 
@@ -75,7 +78,10 @@ export class AIService {
             if (customInstructions?.length) {
                 systemPrompt += '\n\nCustom Instructions:\n' +
                     customInstructions.map(i => `- ${i}`).join('\n');
+                console.log('[Main] Added custom instructions:', customInstructions);
             }
+
+            console.log('[Main] Final system prompt:', systemPrompt);
 
             console.log('[Main] Making OpenAI API request with prompt:', {
                 model: "gpt-4o-mini",
