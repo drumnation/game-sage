@@ -1,6 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AIService } from '../../services/ai/AIService';
-import type { AIResponse, GameMode, AIState } from '../../services/ai/types';
+import type { GameMode, AIState, AISettings, GameInfo } from '../../services/ai/types';
+import type { AIResponseWithSummary, AIMemoryEntry } from '@electron/types';
+
+interface AnalyzeParams {
+    imageBase64: string;
+    memory?: AIMemoryEntry[];
+}
 
 const initialState: AIState = {
     settings: {
@@ -18,26 +24,24 @@ const initialState: AIState = {
 };
 
 export const analyzeScreenshot = createAsyncThunk<
-    AIResponse,
-    { imageBase64: string },
+    AIResponseWithSummary,
+    AnalyzeParams,
     { rejectValue: string }
 >(
     'ai/analyzeScreenshot',
-    async ({ imageBase64 }, { getState, rejectWithValue }) => {
+    async ({ imageBase64, memory }, { getState, rejectWithValue }) => {
         try {
             const state = getState() as { ai: AIState };
             const aiService = new AIService({
                 apiKey: state.ai.settings.apiKey || '',
-                gameInfo: {
-                    name: 'Game',
-                    identifier: 'game',
-                    customInstructions: state.ai.settings.customInstructions,
-                },
+                gameInfo: state.ai.settings.gameInfo,
+                customInstructions: state.ai.settings.customInstructions,
             });
 
             return await aiService.analyzeScreenshot(
                 imageBase64,
-                state.ai.settings.mode
+                state.ai.settings.mode,
+                memory
             );
         } catch (error) {
             return rejectWithValue(error instanceof Error ? error.message : 'Failed to analyze screenshot');
@@ -49,22 +53,18 @@ const aiSlice = createSlice({
     name: 'ai',
     initialState,
     reducers: {
-        updateSettings: (state, action: PayloadAction<Partial<AIState['settings']>>) => {
+        setMode: (state, action: PayloadAction<GameMode>) => {
+            state.settings.mode = action.payload;
+            state.currentMode = action.payload;
+        },
+        toggleMute: (state) => {
+            state.isMuted = !state.isMuted;
+        },
+        updateSettings: (state, action: PayloadAction<Partial<AISettings>>) => {
             state.settings = { ...state.settings, ...action.payload };
-            if (action.payload.mode) {
-                state.currentMode = action.payload.mode;
-            }
         },
-        clearAnalysis: (state) => {
-            state.currentAnalysis = null;
-            state.error = null;
-        },
-        updateGameInfo: (state, action: PayloadAction<{ name: string; identifier: string }>) => {
-            if (state.settings.gameInfo) {
-                state.settings.gameInfo = { ...state.settings.gameInfo, ...action.payload };
-            } else {
-                state.settings.gameInfo = { ...action.payload, customInstructions: [] };
-            }
+        updateGameInfo: (state, action: PayloadAction<GameInfo>) => {
+            state.settings.gameInfo = action.payload;
         },
         addCustomInstruction: (state, action: PayloadAction<string>) => {
             state.settings.customInstructions.push(action.payload);
@@ -72,12 +72,9 @@ const aiSlice = createSlice({
         removeCustomInstruction: (state, action: PayloadAction<number>) => {
             state.settings.customInstructions.splice(action.payload, 1);
         },
-        setMode: (state, action: PayloadAction<GameMode>) => {
-            state.settings.mode = action.payload;
-            state.currentMode = action.payload;
-        },
-        toggleMute: (state) => {
-            state.isMuted = !state.isMuted;
+        updateCustomInstruction: (state, action: PayloadAction<{ index: number; instruction: string }>) => {
+            const { index, instruction } = action.payload;
+            state.settings.customInstructions[index] = instruction;
         },
     },
     extraReducers: (builder) => {
@@ -89,8 +86,7 @@ const aiSlice = createSlice({
             .addCase(analyzeScreenshot.fulfilled, (state, action) => {
                 state.isAnalyzing = false;
                 state.currentAnalysis = action.payload;
-                state.responses = [action.payload, ...state.responses];
-                state.error = null;
+                state.responses = [action.payload, ...state.responses].slice(0, 100);
             })
             .addCase(analyzeScreenshot.rejected, (state, action) => {
                 state.isAnalyzing = false;
@@ -100,12 +96,12 @@ const aiSlice = createSlice({
 });
 
 export const {
+    setMode,
+    toggleMute,
     updateSettings,
-    clearAnalysis,
     updateGameInfo,
     addCustomInstruction,
     removeCustomInstruction,
-    setMode,
-    toggleMute,
+    updateCustomInstruction
 } = aiSlice.actions;
 export default aiSlice.reducer; 

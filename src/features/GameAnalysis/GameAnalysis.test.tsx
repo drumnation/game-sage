@@ -65,10 +65,12 @@ describe('GameAnalysis', () => {
 
     it('displays analysis when available', () => {
         const mockAnalysis: AIResponse = {
-            content: 'This is a test analysis',
+            content: 'Test analysis content',
+            summary: 'Test analysis summary',
             timestamp: Date.now(),
             mode: 'tactical',
             confidence: 1,
+            role: 'assistant'
         };
         renderWithProviders(<GameAnalysis />, {
             currentAnalysis: mockAnalysis,

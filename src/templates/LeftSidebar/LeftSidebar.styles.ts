@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
 export const LeftSidebarContainer = styled.aside`
-    width: 400px;
+    width: 600px;
     height: 100vh;
     background-color: ${({ theme }) => theme.colors.surface};
     border-right: 1px solid ${({ theme }) => theme.colors.border};
@@ -18,6 +18,10 @@ export const LeftSidebarContainer = styled.aside`
             padding: ${({ theme }) => theme.spacing.md};
             background-color: ${({ theme }) => theme.colors.background};
             border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+
+            .ant-tabs-nav-wrap {
+                justify-content: center;
+            }
         }
 
         .ant-tabs-content-holder {

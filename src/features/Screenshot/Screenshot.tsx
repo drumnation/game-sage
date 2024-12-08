@@ -5,6 +5,7 @@ import { ScreenshotControls } from './components/ScreenshotControls';
 import type { ScreenshotProps } from './Screenshot.types';
 import { ScreenshotContainer } from './Screenshot.styles';
 import type { ScreenshotConfig } from '@electron/types/index';
+import { useScreenshotCapture } from './hooks/useScreenshotCapture';
 
 interface SettingsChangeParams extends Partial<ScreenshotConfig> {
     useHotkey?: boolean;
@@ -17,11 +18,12 @@ export const Screenshot: React.FC<ScreenshotProps> = ({
     onSingleCapture,
     isCapturing,
     isTransitioning = false,
-    isFlashing = false,
+    isFlashing = false
 }) => {
     const [useHotkey, setUseHotkey] = useState(false);
     const [isHotkeyCapturing, setIsHotkeyCapturing] = useState(false);
     const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
+    const { totalCaptures, handleCapture: hookHandleCapture, lastCaptureTime } = useScreenshotCapture();
 
     const handleSettingsChange = useCallback((settings: SettingsChangeParams) => {
         // Update local state if useHotkey changed
@@ -32,6 +34,12 @@ export const Screenshot: React.FC<ScreenshotProps> = ({
         // Forward settings changes
         onSettingsChange(settings);
     }, [onSettingsChange]);
+
+    // Combine hook's handleCapture with parent's onCapture
+    const handleCapture = useCallback(async () => {
+        await hookHandleCapture();
+        onCapture();
+    }, [hookHandleCapture, onCapture]);
 
     const handleHotkeyCaptureEvent = useCallback(() => {
         // Prevent captures while recording a new hotkey or if already capturing
@@ -68,13 +76,15 @@ export const Screenshot: React.FC<ScreenshotProps> = ({
                 onSettingsChange={handleSettingsChange}
                 isCapturing={isCapturing}
                 onHotkeyRecordingChange={setIsRecordingHotkey}
+                totalCaptures={totalCaptures}
+                lastCaptureTime={lastCaptureTime || undefined}
             />
             <MonitorSelection
                 onDisplaysChange={onDisplaysChange}
                 isCapturing={isCapturing}
             />
             <ScreenshotControls
-                onCapture={onCapture}
+                onCapture={handleCapture}
                 onSingleCapture={onSingleCapture}
                 isCapturing={isCapturing}
                 isTransitioning={isTransitioning}

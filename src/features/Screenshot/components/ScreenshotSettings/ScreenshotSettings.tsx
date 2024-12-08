@@ -5,21 +5,22 @@ import type { ScreenshotSettingsProps } from '../../Screenshot.types';
 import type { ScreenshotConfig, APIResponse } from '@electron/types';
 import { useHotkeyManager } from '../../../../store/hooks/useHotkeyManager';
 import { HotkeyInputContainer, HotkeyInput, HotkeyButtonGroup } from './ScreenshotSettings.styles';
+import { CountdownTimer } from '../../../../components/atoms/CountdownTimer';
 
 interface FormValues extends Omit<ScreenshotConfig, 'activeDisplays'> {
     useHotkey: boolean;
+    narrationMode?: boolean;
 }
 
 type FormChangedValues = Partial<FormValues>;
 
 const DEFAULT_VALUES: Partial<FormValues> = {
-    captureInterval: 1000,
+    captureInterval: 10,
     format: 'jpeg',
     quality: 80,
-    detectSceneChanges: false,
-    sceneChangeThreshold: 0.1,
     useHotkey: false,
-    maxConcurrentCaptures: 1
+    maxConcurrentCaptures: 1,
+    narrationMode: false
 };
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+C';
@@ -27,7 +28,9 @@ const DEFAULT_HOTKEY = 'CommandOrControl+Shift+C';
 export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
     isCapturing,
     onSettingsChange,
-    onHotkeyRecordingChange
+    onHotkeyRecordingChange,
+    totalCaptures = 0,
+    lastCaptureTime
 }) => {
     const [form] = Form.useForm<FormValues>();
     const {
@@ -53,14 +56,14 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
         api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
             if (response.success && response.data) {
                 const config = response.data;
-                form.setFieldsValue({
+                // Convert interval from milliseconds to seconds for the form
+                const formConfig = {
                     ...config,
-                    useHotkey: localStorage.getItem('useHotkey') === 'true' // Load from localStorage
-                });
-                onSettingsChange?.({
-                    ...config,
+                    captureInterval: config.captureInterval / 1000,
                     useHotkey: localStorage.getItem('useHotkey') === 'true'
-                });
+                };
+                console.log('Setting form values:', formConfig);
+                form.setFieldsValue(formConfig);
             }
         });
 
@@ -73,6 +76,11 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
 
     const handleValuesChange = useCallback((changedValues: FormChangedValues, allValues: FormValues) => {
         if (isCapturing) return;
+
+        console.log('Form values changed:', {
+            changedValues,
+            allValues
+        });
 
         // Handle hotkey mode change
         if ('useHotkey' in changedValues) {
@@ -88,8 +96,18 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
             }
         }
 
+        // Convert interval from seconds to milliseconds before sending to backend
+        const settingsToSend = { ...allValues };
+        if ('captureInterval' in changedValues) {
+            settingsToSend.captureInterval = allValues.captureInterval * 1000;
+            console.log('Converting and sending interval to backend:', {
+                formValue: allValues.captureInterval,
+                backendValue: settingsToSend.captureInterval
+            });
+        }
+
         // Notify parent of changes
-        onSettingsChange?.(allValues);
+        onSettingsChange?.(settingsToSend);
     }, [form, isCapturing, onSettingsChange]);
 
     const handleResetHotkey = useCallback(() => {
@@ -155,21 +173,44 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
                         <>
                             <Form.Item
                                 name="captureInterval"
-                                label="Capture Interval (ms)"
+                                label="Capture Interval (s)"
                             >
                                 <Slider
-                                    min={100}
-                                    max={10000}
-                                    step={100}
+                                    min={10}
+                                    max={60}
+                                    step={10}
                                     marks={{
-                                        100: '100ms',
-                                        1000: '1s',
-                                        5000: '5s',
-                                        10000: '10s'
+                                        10: '10s',
+                                        20: '20s',
+                                        30: '30s',
+                                        40: '40s',
+                                        50: '50s',
+                                        60: '60s'
                                     }}
                                 />
                             </Form.Item>
 
+                            {isCapturing && (
+                                <Form.Item>
+                                    <CountdownTimer
+                                        interval={form.getFieldValue('captureInterval')}
+                                        isActive={isCapturing}
+                                        totalCount={totalCaptures || 0}
+                                        lastCaptureTime={lastCaptureTime}
+                                    />
+                                </Form.Item>
+                            )}
+
+                            <Form.Item
+                                name="narrationMode"
+                                label="Narration Mode"
+                                valuePropName="checked"
+                                tooltip="Adjust AI response length to match capture interval for smooth narration"
+                            >
+                                <Switch />
+                            </Form.Item>
+
+                            {/* Scene Change Detection - Temporarily disabled
                             <Form.Item
                                 name="detectSceneChanges"
                                 label="Scene Change Detection"
@@ -204,6 +245,7 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
                                     );
                                 }}
                             </Form.Item>
+                            */}
                         </>
                     );
                 }}

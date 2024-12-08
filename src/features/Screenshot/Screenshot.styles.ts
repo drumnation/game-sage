@@ -8,7 +8,7 @@ export const ScreenshotContainer = styled.div`
 `;
 
 export const ScreenshotSider = styled.div`
-    width: 300px;
+    width: 600px;
     padding: 16px;
     background-color: ${({ theme }) => theme.colors.background};
     border-right: 1px solid ${({ theme }) => theme.colors.border};

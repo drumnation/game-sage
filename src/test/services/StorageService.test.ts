@@ -2,7 +2,7 @@ import { StorageService } from '../../../electron/services/storage/StorageServic
 import type { CaptureFrame } from '@electron/types';
 import type { Stats } from 'fs';
 import fs from 'fs/promises';
-import sharp from 'sharp';
+import Jimp from 'jimp';
 import path from 'path';
 
 type MockFs = {
@@ -22,16 +22,8 @@ const mockFs = fs as unknown as MockFs;
 
 // Create a valid test image buffer
 const createTestImage = async () => {
-    return await sharp({
-        create: {
-            width: 100,
-            height: 100,
-            channels: 4,
-            background: { r: 255, g: 0, b: 0, alpha: 1 }
-        }
-    })
-        .jpeg()
-        .toBuffer();
+    const image = new Jimp(100, 100, 0xFF0000FF); // Red color with full alpha
+    return await image.getBufferAsync(Jimp.MIME_JPEG);
 };
 
 describe('StorageService', () => {

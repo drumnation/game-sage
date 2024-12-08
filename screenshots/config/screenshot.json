@@ -1,12 +1,13 @@
 {
-  "captureInterval": 1000,
+  "captureInterval": 30000,
   "format": "jpeg",
   "quality": 80,
-  "detectSceneChanges": false,
-  "sceneChangeThreshold": 0.1,
+  "detectSceneChanges": true,
+  "sceneChangeThreshold": 0.28,
   "maxConcurrentCaptures": 1,
+  "narrationMode": true,
   "activeDisplays": [
     "1"
   ],
-  "useHotkey": true
+  "useHotkey": false
 }

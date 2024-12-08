@@ -1,11 +1,11 @@
 import { screen, systemPreferences } from 'electron';
 import screenshot from 'screenshot-desktop';
-import sharp from 'sharp';
 import { EventEmitter } from 'events';
 import type { DisplayInfo, CaptureResult, ScreenshotConfig } from './types';
 import { ScreenshotMetadata, DEFAULT_CONFIG } from './types';
 import { StorageConfig, StorageFormat } from '../storage/types';
 import { StorageService } from '../storage/StorageService';
+import Jimp from 'jimp';
 
 export class ScreenshotService extends EventEmitter {
     private config: ScreenshotConfig;
@@ -71,9 +71,7 @@ export class ScreenshotService extends EventEmitter {
     }
 
     public async getDisplays(): Promise<DisplayInfo[]> {
-        console.log('Getting displays...');
         const displays = screen.getAllDisplays();
-        console.log('Raw Electron displays:', displays.map(d => ({ id: d.id, label: d.label, bounds: d.bounds })));
 
         const mappedDisplays = displays.map(display => ({
             id: display.id.toString(),
@@ -87,23 +85,31 @@ export class ScreenshotService extends EventEmitter {
             isPrimary: display.id === screen.getPrimaryDisplay().id,
         }));
 
-        console.log('Mapped displays:', mappedDisplays);
         return mappedDisplays;
     }
 
     public async updateConfig(config: Partial<ScreenshotConfig>): Promise<void> {
         try {
             const previousDisplays = this.config.activeDisplays;
+            const previousInterval = this.config.captureInterval;
             this.config = { ...this.config, ...config };
             await this.storage.saveConfig('screenshot', this.config);
 
-            // If active displays changed and we're currently capturing, restart the capture
-            if (config.activeDisplays &&
-                JSON.stringify(previousDisplays) !== JSON.stringify(config.activeDisplays) &&
-                this.isCapturing()) {
-                console.log('Display selection changed, restarting capture service...');
-                await this.stop();
-                await this.start();
+            console.log('Updated config:', {
+                previousInterval,
+                newInterval: this.config.captureInterval,
+                intervalChanged: config.captureInterval && config.captureInterval !== previousInterval
+            });
+
+            // If active displays or interval changed and we're currently capturing, restart the capture
+            if ((config.activeDisplays &&
+                JSON.stringify(previousDisplays) !== JSON.stringify(config.activeDisplays)) ||
+                (config.captureInterval && config.captureInterval !== previousInterval)) {
+                if (this.isCapturing()) {
+                    console.log('Display selection or interval changed, restarting capture service...');
+                    await this.stop();
+                    await this.start();
+                }
             }
         } catch (error) {
             console.error('Failed to update config:', error);
@@ -113,6 +119,7 @@ export class ScreenshotService extends EventEmitter {
 
     public async start(): Promise<void> {
         console.log('Starting screenshot service...');
+        console.log('Current capture interval:', this.config.captureInterval);
 
         if (this.captureInterval) {
             console.log('Screenshot service already running');
@@ -133,23 +140,37 @@ export class ScreenshotService extends EventEmitter {
             // Ensure we're not capturing before starting
             await this.stop();
 
-            // Start the interval immediately
-            this.captureInterval = setInterval(() => {
-                console.log(`[${new Date().toISOString()}] Starting scheduled capture...`);
-                this.capture().catch(error => {
+            // The interval is already in milliseconds from the config
+            const intervalMs = this.config.captureInterval;
+            console.log(`Setting up interval capture every ${intervalMs}ms (${intervalMs / 1000} seconds)`);
+
+            // Trigger an immediate capture
+            try {
+                console.log('Performing initial capture...');
+                const results = await this.capture();
+                if (results.length > 0) {
+                    console.log(`Initial capture successful - captured ${results.length} frames`);
+                }
+            } catch (error) {
+                console.error('Error during initial capture:', error);
+                this.emit('error', error);
+            }
+
+            // Start the interval after the initial capture
+            this.captureInterval = setInterval(async () => {
+                try {
+                    console.log('Interval triggered - attempting capture...');
+                    const results = await this.capture();
+                    if (results.length > 0) {
+                        console.log(`Successfully captured ${results.length} frames at ${new Date().toISOString()}`);
+                    }
+                } catch (error) {
                     console.error('Error during scheduled capture:', error);
                     this.emit('error', error);
-                });
-            }, this.config.captureInterval);
+                }
+            }, intervalMs);
 
-            // Trigger an immediate capture in parallel
-            console.log('Triggering immediate capture...');
-            this.capture().catch(error => {
-                console.error('Error during immediate capture:', error);
-                this.emit('error', error);
-            });
-
-            console.log(`Screenshot service started with interval: ${this.config.captureInterval}ms`);
+            console.log(`Screenshot service started with interval: ${intervalMs}ms (${intervalMs / 1000} seconds)`);
         } catch (error) {
             console.error('Failed to start screenshot service:', error);
             this.emit('error', error);
@@ -205,25 +226,33 @@ export class ScreenshotService extends EventEmitter {
         try {
             const displays = await this.getDisplays();
             const activeDisplays = this.config.activeDisplays || [displays[0].id];
-            console.log('Active displays:', activeDisplays);
+            console.log(`Starting capture for displays: ${activeDisplays.join(', ')}`);
 
             const results: CaptureResult[] = [];
 
             for (const display of displays) {
                 if (activeDisplays.includes(display.id)) {
-                    console.log(`Attempting to capture display:`, {
-                        id: display.id,
-                        name: display.name,
-                        bounds: display.bounds,
-                        isPrimary: display.isPrimary
-                    });
-
+                    console.log(`Capturing display: ${display.id}`);
                     const result = await this.captureDisplay(display);
                     if (result) {
                         results.push(result);
-                        console.log(`Successfully captured frame for display: ${display.id}`);
+                        console.log(`Emitting capture frame for display: ${display.id}`);
+                        // Emit the capture frame event
+                        this.emit('capture-frame', {
+                            imageData: result.imageData,
+                            metadata: {
+                                ...result.metadata,
+                                isIntervalCapture: true
+                            }
+                        });
                     }
                 }
+            }
+
+            if (results.length > 0) {
+                console.log(`Capture completed successfully for ${results.length} displays`);
+            } else {
+                console.log('No displays were captured');
             }
 
             return results;
@@ -278,23 +307,18 @@ export class ScreenshotService extends EventEmitter {
 
     private async processImage(buffer: Buffer): Promise<Buffer> {
         try {
-            const image = sharp(buffer);
+            const image = await Jimp.read(buffer);
 
             // Always resize to a reasonable size for preview
-            image.resize(800, 600, {
-                fit: 'inside',
-                withoutEnlargement: true
-            });
+            image.resize(800, 600, Jimp.RESIZE_BILINEAR);
 
             switch (this.config.format) {
                 case 'jpeg':
-                    return image.jpeg({ quality: 60 }).toBuffer();
+                    return image.quality(60).getBufferAsync(Jimp.MIME_JPEG);
                 case 'png':
-                    return image.png({ compressionLevel: 8 }).toBuffer();
-                case 'webp':
-                    return image.webp({ quality: 60 }).toBuffer();
+                    return image.deflateLevel(8).getBufferAsync(Jimp.MIME_PNG);
                 default:
-                    return image.jpeg({ quality: 60 }).toBuffer();
+                    return image.quality(60).getBufferAsync(Jimp.MIME_JPEG);
             }
         } catch (error) {
             console.error('Failed to process image:', error);
@@ -304,17 +328,34 @@ export class ScreenshotService extends EventEmitter {
 
     private async calculateSceneChange(lastFrame: Buffer, currentFrame: Buffer): Promise<number> {
         try {
-            const [lastGray, currentGray] = await Promise.all([
-                sharp(lastFrame).grayscale().resize(320, 240).raw().toBuffer(),
-                sharp(currentFrame).grayscale().resize(320, 240).raw().toBuffer()
+            const [lastImage, currentImage] = await Promise.all([
+                Jimp.read(lastFrame),
+                Jimp.read(currentFrame)
             ]);
 
-            let diff = 0;
-            for (let i = 0; i < lastGray.length; i++) {
-                diff += Math.pow(lastGray[i] - currentGray[i], 2);
+            // Resize and convert to grayscale for comparison
+            lastImage.resize(320, 240).grayscale();
+            currentImage.resize(320, 240).grayscale();
+
+            let diffCount = 0;
+            const threshold = 10; // Pixel difference threshold
+
+            // Compare each pixel
+            for (let x = 0; x < 320; x++) {
+                for (let y = 0; y < 240; y++) {
+                    const lastPixel = Jimp.intToRGBA(lastImage.getPixelColor(x, y));
+                    const currentPixel = Jimp.intToRGBA(currentImage.getPixelColor(x, y));
+
+                    // Since the images are grayscale, we can just compare one channel
+                    if (Math.abs(lastPixel.r - currentPixel.r) > threshold) {
+                        diffCount++;
+                    }
+                }
             }
-            const mse = diff / lastGray.length;
-            return Math.min(mse / 255, 1);
+
+            // Calculate percentage of changed pixels
+            const totalPixels = 320 * 240;
+            return (diffCount / totalPixels) * 100;
         } catch (error) {
             console.error('Failed to calculate scene change:', error);
             throw error;

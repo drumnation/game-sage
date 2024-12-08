@@ -1,104 +1,127 @@
 import { globalShortcut } from 'electron';
-import type { HotkeyAction, RegisteredHotkey } from '../../../electron/services/hotkey/types';
+import type { HotkeyAction, RegisteredHotkey } from './types';
 
 const VALID_MODIFIERS = ['Command', 'CommandOrControl', 'Control', 'Ctrl', 'Alt', 'Option', 'AltGr', 'Shift', 'Super'];
 const VALID_KEY_PATTERN = /^[A-Z0-9]$|^F[1-9][0-9]?$|^(Plus|Space|Tab|Backspace|Delete|Insert|Return|Enter|Up|Down|Left|Right|Home|End|PageUp|PageDown|Escape|Esc|VolumeUp|VolumeDown|VolumeMute|MediaNextTrack|MediaPreviousTrack|MediaStop|MediaPlayPause|PrintScreen)$/i;
 
+let hotkeyModeEnabled = true; // Default to enabled
+let hotkeyService: HotkeyService | null = null;
+
+export const setHotkeyService = (service: HotkeyService) => {
+    hotkeyService = service;
+};
+
+export const setHotkeyModeState = (enabled: boolean) => {
+    console.log('Setting hotkey mode:', enabled);
+    hotkeyModeEnabled = enabled;
+
+    // Always unregister all shortcuts first
+    globalShortcut.unregisterAll();
+
+    // Only re-register if enabled
+    if (enabled) {
+        hotkeyService?.reregisterAll();
+    }
+};
+
+export const getHotkeyModeState = () => hotkeyModeEnabled;
+
 export class HotkeyService {
     private registeredHotkeys: Map<HotkeyAction, RegisteredHotkey> = new Map();
+    private originalCallbacks: Map<HotkeyAction, () => void> = new Map();
 
     private validateAccelerator(accelerator: string): boolean {
         const parts = accelerator.split('+').map(part => part.trim());
-
-        // Must have at least one modifier and one key
-        if (parts.length < 2) {
-            return false;
-        }
-
-        // All parts except the last one must be valid modifiers
+        if (parts.length < 2) return false;
         for (let i = 0; i < parts.length - 1; i++) {
-            if (!VALID_MODIFIERS.includes(parts[i])) {
-                return false;
-            }
+            if (!VALID_MODIFIERS.includes(parts[i])) return false;
         }
-
-        // Last part must be a valid key
         const key = parts[parts.length - 1];
         return VALID_KEY_PATTERN.test(key);
     }
 
-    public registerHotkey(action: HotkeyAction, accelerator: string, callback: () => void): void {
-        // Check if hotkey is already registered
-        if (this.registeredHotkeys.has(action)) {
-            return;
-        }
+    public reregisterAll(): void {
+        // Skip if mode is disabled
+        if (!hotkeyModeEnabled) return;
 
-        // Validate accelerator format
+        // Re-register all shortcuts
+        this.registeredHotkeys.forEach((hotkey, action) => {
+            const originalCallback = this.originalCallbacks.get(action);
+            if (originalCallback) {
+                globalShortcut.register(hotkey.accelerator, () => {
+                    if (hotkeyModeEnabled) {
+                        originalCallback();
+                    }
+                });
+            }
+        });
+    }
+
+    public registerHotkey(action: HotkeyAction, accelerator: string, callback: () => void): void {
         if (!this.validateAccelerator(accelerator)) {
             throw new Error(`Invalid accelerator format: ${accelerator}`);
         }
 
-        try {
-            // Register the global shortcut
-            globalShortcut.register(accelerator, callback);
+        // Store the original callback
+        this.originalCallbacks.set(action, callback);
 
-            // Store the registration
-            this.registeredHotkeys.set(action, {
-                action,
-                accelerator,
-                callback
-            });
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            throw new Error(`Failed to register hotkey: ${errorMessage}`);
+        // Unregister existing hotkey if it exists
+        this.unregisterHotkey(action);
+
+        // Create the registration
+        const registration = {
+            action,
+            accelerator,
+            callback: () => {
+                if (hotkeyModeEnabled) {
+                    callback();
+                }
+            }
+        };
+
+        this.registeredHotkeys.set(action, registration);
+
+        // Only register with the system if mode is enabled
+        if (hotkeyModeEnabled) {
+            const success = globalShortcut.register(accelerator, registration.callback);
+            if (!success) {
+                throw new Error(`Failed to register hotkey: ${accelerator}`);
+            }
         }
     }
 
     public unregisterHotkey(action: HotkeyAction): void {
         const hotkey = this.registeredHotkeys.get(action);
-        if (!hotkey) {
-            return;
+        if (hotkey) {
+            globalShortcut.unregister(hotkey.accelerator);
+            this.registeredHotkeys.delete(action);
+            this.originalCallbacks.delete(action);
         }
-
-        globalShortcut.unregister(hotkey.accelerator);
-        this.registeredHotkeys.delete(action);
     }
 
     public unregisterAll(): void {
         globalShortcut.unregisterAll();
         this.registeredHotkeys.clear();
+        this.originalCallbacks.clear();
     }
 
     public updateHotkey(action: HotkeyAction, newAccelerator: string): void {
-        const hotkey = this.registeredHotkeys.get(action);
-        if (!hotkey) {
+        const originalCallback = this.originalCallbacks.get(action);
+        if (!originalCallback) {
             throw new Error(`Hotkey ${action} not found`);
         }
 
         // Unregister old hotkey
-        globalShortcut.unregister(hotkey.accelerator);
+        this.unregisterHotkey(action);
 
         // Register new hotkey
-        try {
-            globalShortcut.register(newAccelerator, hotkey.callback);
-            this.registeredHotkeys.set(action, {
-                ...hotkey,
-                accelerator: newAccelerator
-            });
-        } catch (error: unknown) {
-            // If registration fails, try to restore the old hotkey
-            globalShortcut.register(hotkey.accelerator, hotkey.callback);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            throw new Error(`Failed to update hotkey: ${errorMessage}`);
-        }
+        this.registerHotkey(action, newAccelerator, originalCallback);
     }
 
     public isRegistered(action: HotkeyAction): boolean {
         const hotkey = this.registeredHotkeys.get(action);
-        if (!hotkey) {
-            return false;
-        }
-        return globalShortcut.isRegistered(hotkey.accelerator);
+        if (!hotkey) return false;
+        return hotkeyModeEnabled && globalShortcut.isRegistered(hotkey.accelerator);
     }
 
     public getHotkey(action: HotkeyAction): RegisteredHotkey | undefined {

@@ -7,5 +7,6 @@ export class AIServiceError extends Error {
 
 export interface AIMessage {
     content: string;
+    summary?: string;
     role: 'assistant' | 'user' | 'system';
 } 

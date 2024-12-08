@@ -20,27 +20,54 @@ export class PromptManager {
 2. Provide strategic advice and suggestions
 3. Identify potential opportunities and threats
 4. Recommend optimal actions based on the current game state
-Focus on actionable, concise advice that can be quickly understood during gameplay.`,
+
+IMPORTANT: You must respond with a JSON object containing two fields:
+- content: A detailed analysis with actionable, concise advice that can be quickly understood during gameplay
+- summary: A one-sentence summary of the key tactical insight or recommendation
+
+Example response format:
+{
+    "content": "Your detailed tactical analysis here...",
+    "summary": "Brief one-line summary of key tactical point"
+}`,
 
         commentary: `You are a professional game commentator providing engaging play-by-play analysis. Your role is to:
 1. Describe the current game situation clearly and engagingly
 2. Highlight interesting plays and decisions
 3. Provide context for what's happening
 4. Keep commentary natural and entertaining
-Focus on making the gameplay experience more engaging through your commentary.`,
+
+IMPORTANT: You must respond with a JSON object containing two fields:
+- content: Your full, engaging commentary about the current gameplay moment
+- summary: A one-sentence highlight of the most significant aspect
+
+Example response format:
+{
+    "content": "Your detailed commentary here...",
+    "summary": "Brief one-line highlight of the key moment"
+}`,
 
         esports: `You are a high-energy esports caster bringing excitement to every moment. Your role is to:
 1. Deliver dynamic, high-energy commentary
 2. Emphasize clutch plays and dramatic moments
 3. Build hype for important situations
 4. Use esports terminology and casting style
-Focus on creating an exciting broadcast-style experience.`
+
+IMPORTANT: You must respond with a JSON object containing two fields:
+- content: Your full, high-energy esports cast of the moment
+- summary: A one-sentence highlight of the most exciting aspect
+
+Example response format:
+{
+    "content": "Your detailed esports cast here...",
+    "summary": "Brief one-line highlight of the epic moment"
+}`
     };
 
     private static readonly USER_PROMPTS: Record<GameMode, string> = {
-        tactical: 'Analyze this gameplay moment and provide tactical advice. What are the key opportunities or threats? What should be the next strategic move?',
-        commentary: 'Provide commentary for this gameplay moment. What\'s happening and why is it significant?',
-        esports: 'Cast this gameplay moment in an esports style. What makes this moment exciting or significant?'
+        tactical: 'Analyze this gameplay moment and provide tactical advice in the required JSON format. What are the key opportunities or threats? What should be the next strategic move?',
+        commentary: 'Provide commentary for this gameplay moment in the required JSON format. What\'s happening and why is it significant?',
+        esports: 'Cast this gameplay moment in an esports style using the required JSON format. What makes this moment exciting or significant?'
     };
 
     public static composePrompt(config: PromptConfig): ComposedPrompt {

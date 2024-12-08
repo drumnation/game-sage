@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 import commonjs from '@rollup/plugin-commonjs'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   resolve: {
     alias: {
       '@atoms': path.resolve(__dirname, 'src/components/atoms/index'),
@@ -28,11 +28,16 @@ export default defineConfig({
       main: {
         entry: 'electron/main.ts',
         vite: {
+          mode: command,
           build: {
             sourcemap: true,
             outDir: 'dist-electron',
+            minify: command === 'build',
             rollupOptions: {
-              external: ['sharp'],
+              external: ['sharp', 'electron'],
+              output: {
+                format: 'commonjs'
+              },
               plugins: [
                 commonjs({
                   dynamicRequireTargets: [
@@ -44,21 +49,38 @@ export default defineConfig({
               ]
             }
           },
+          resolve: {
+            conditions: ['node']
+          }
         },
       },
       preload: {
         input: path.join(__dirname, 'electron/preload.ts'),
         vite: {
+          mode: command,
           build: {
             sourcemap: true,
             outDir: 'dist-electron',
+            minify: command === 'build',
+            rollupOptions: {
+              output: {
+                format: 'commonjs'
+              }
+            }
           },
+          resolve: {
+            conditions: ['node']
+          }
         },
       },
-      renderer: process.env.NODE_ENV === 'test' ? undefined : {},
+      renderer: command === 'serve' ? {} : undefined,
     }),
   ],
   build: {
     sourcemap: true,
+    rollupOptions: {
+      external: ['electron'],
+    }
   },
-})
+  base: process.env.ELECTRON == "true" ? './' : '.',
+}))

@@ -1,5 +1,7 @@
 import type { AIAnalysisRequest } from '../../../window';
-import { AIServiceConfig, AIResponse, AIError, GameMode } from './types';
+import type { AIResponseWithSummary } from '@electron/types';
+import { AIServiceConfig, AIError, GameMode, AIMemoryEntry } from './types';
+
 export class AIService {
   private config: AIServiceConfig;
 
@@ -15,13 +17,14 @@ export class AIService {
   async analyzeScreenshot(
     imageBase64: string,
     mode: GameMode,
-    _previousResponses?: AIResponse[],
-  ): Promise<AIResponse> {
+    memory?: AIMemoryEntry[],
+  ): Promise<AIResponseWithSummary> {
     try {
       console.log('[Renderer] Sending screenshot for analysis:', {
         mode,
         imageSize: imageBase64.length,
         gameInfo: this.config.gameInfo?.name,
+        memoryCount: memory?.length || 0
       });
 
       const api = window.electronAPI;
@@ -33,7 +36,8 @@ export class AIService {
         imageBase64,
         mode,
         gameInfo: this.config.gameInfo,
-        customInstructions: this.config.customInstructions
+        customInstructions: this.config.customInstructions,
+        memory
       } as AIAnalysisRequest);
 
       console.log('[Renderer] Received AI analysis response:', {
@@ -45,14 +49,33 @@ export class AIService {
         throw new Error('No response from IPC call');
       }
 
-      const aiResponse: AIResponse = {
-        content: response.content,
-        timestamp: Date.now(),
-        mode,
-        confidence: 1,
-      };
-
-      return aiResponse;
+      try {
+        // The response is already a JSON object, no need to parse it
+        if (typeof response.content === 'string') {
+          // If it's a string, try to parse it
+          const parsedResponse = JSON.parse(response.content);
+          return {
+            content: parsedResponse.content,
+            summary: parsedResponse.summary || this.extractSummary(parsedResponse.content),
+            role: 'assistant'
+          };
+        } else {
+          // If it's not a string, it's already an object
+          return {
+            content: response.content,
+            summary: this.extractSummary(response.content),
+            role: 'assistant'
+          };
+        }
+      } catch (parseError) {
+        console.error('[Renderer] Error parsing AI response:', parseError);
+        // Fallback to legacy format if JSON parsing fails
+        return {
+          content: response.content,
+          summary: this.extractSummary(response.content),
+          role: 'assistant'
+        };
+      }
     } catch (error) {
       console.error('[Renderer] Error in analyzeScreenshot:', error);
       const aiError = new Error(error instanceof Error ? error.message : 'Unknown error') as AIError;
@@ -60,6 +83,73 @@ export class AIService {
       aiError.status = 500;
       aiError.retryable = true;
       throw aiError;
+    }
+  }
+
+  private extractSummary(content: string): string {
+    try {
+      // Split content into sentences
+      const sentences = content.split(/[.!?](?:\s|$)/).filter(s => s.trim().length > 0);
+
+      if (sentences.length === 0) {
+        return "No content available";
+      }
+
+      // If it's a very short response, use the whole thing
+      if (content.length < 100) {
+        return content;
+      }
+
+      // Look for key phrases that might indicate important information
+      const keyPhrases = [
+        "most importantly",
+        "key point",
+        "in summary",
+        "therefore",
+        "ultimately",
+        "overall",
+        "notably",
+        "significantly",
+        "crucially"
+      ];
+
+      // Try to find a sentence with a key phrase
+      for (const phrase of keyPhrases) {
+        const relevantSentence = sentences.find(s =>
+          s.toLowerCase().includes(phrase.toLowerCase())
+        );
+        if (relevantSentence) {
+          return relevantSentence.trim();
+        }
+      }
+
+      // If no key phrases found, try to use a combination of first and last sentences
+      if (sentences.length >= 2) {
+        // If last sentence seems like a conclusion, use it
+        const lastSentence = sentences[sentences.length - 1].toLowerCase();
+        if (lastSentence.includes("should") ||
+          lastSentence.includes("must") ||
+          lastSentence.includes("recommend") ||
+          lastSentence.includes("need to")) {
+          return sentences[sentences.length - 1].trim();
+        }
+      }
+
+      // Default to first sentence if it's substantial enough
+      const firstSentence = sentences[0].trim();
+      if (firstSentence.length >= 50) {
+        return firstSentence;
+      }
+
+      // Combine first two sentences if they're short
+      if (sentences.length >= 2 && firstSentence.length < 50) {
+        return `${firstSentence} ${sentences[1].trim()}`;
+      }
+
+      return firstSentence;
+    } catch (error) {
+      console.error('[Renderer] Error extracting summary:', error);
+      return content.substring(0, 100) + '...';
     }
   }
 } 

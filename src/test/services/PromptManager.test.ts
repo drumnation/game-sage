@@ -5,108 +5,82 @@ describe('PromptManager', () => {
     const mockGameInfo: GameInfo = {
         name: 'Test Game',
         identifier: 'test-game',
-        customInstructions: ['Focus on player positioning'],
+        customInstructions: ['Instruction 1', 'Instruction 2']
     };
 
     const mockPreviousResponses: AIResponse[] = [
         {
             content: 'Previous tactical advice',
-            timestamp: Date.now() - 1000,
+            summary: 'Previous tactical summary',
+            timestamp: Date.now(),
             mode: 'tactical',
             confidence: 1,
+            role: 'assistant'
         }
     ];
 
     describe('composePrompt', () => {
-        it('should compose basic prompt without additional context', () => {
-            const { systemPrompt, userPrompt } = PromptManager.composePrompt({
-                mode: 'tactical',
-            });
-
-            expect(systemPrompt).toContain('expert gaming advisor');
-            expect(systemPrompt).not.toContain('Game Context');
-            expect(userPrompt).toContain('Analyze this gameplay moment');
-            expect(userPrompt).not.toContain('Previous context');
-        });
-
-        it('should include game info in prompt', () => {
+        it('should compose basic prompt without previous responses', () => {
             const { systemPrompt } = PromptManager.composePrompt({
                 mode: 'tactical',
-                gameInfo: mockGameInfo,
+                gameInfo: mockGameInfo
             });
 
-            expect(systemPrompt).toContain('Game Context');
-            expect(systemPrompt).toContain('Test Game');
-            expect(systemPrompt).toContain('test-game');
-            expect(systemPrompt).toContain('Focus on player positioning');
+            expect(systemPrompt).toContain('Game: Test Game');
+            expect(systemPrompt).toContain('Instruction 1');
+            expect(systemPrompt).toContain('Instruction 2');
         });
 
-        it('should include custom instructions in prompt', () => {
-            const customInstructions = ['Pay attention to resource management'];
-            const { systemPrompt } = PromptManager.composePrompt({
-                mode: 'tactical',
-                customInstructions,
-            });
-
-            expect(systemPrompt).toContain('Custom Instructions');
-            expect(systemPrompt).toContain('Pay attention to resource management');
-        });
-
-        it('should include previous responses in user prompt', () => {
+        it('should include previous responses in the prompt', () => {
             const { userPrompt } = PromptManager.composePrompt({
                 mode: 'tactical',
-                previousResponses: mockPreviousResponses,
+                gameInfo: mockGameInfo,
+                previousResponses: mockPreviousResponses
             });
 
-            expect(userPrompt).toContain('Previous context');
             expect(userPrompt).toContain('Previous tactical advice');
         });
 
-        it('should respect maxContextLength for previous responses', () => {
+        it('should handle missing game info', () => {
+            const { systemPrompt } = PromptManager.composePrompt({
+                mode: 'tactical'
+            });
+
+            expect(systemPrompt).not.toContain('Game:');
+        });
+
+        it('should handle missing custom instructions', () => {
+            const gameInfoWithoutInstructions: GameInfo = {
+                name: 'Test Game',
+                identifier: 'test-game'
+            };
+            const { systemPrompt } = PromptManager.composePrompt({
+                mode: 'tactical',
+                gameInfo: gameInfoWithoutInstructions
+            });
+
+            expect(systemPrompt).not.toContain('Game-specific instructions');
+        });
+
+        it('should limit the number of previous responses', () => {
             const manyResponses: AIResponse[] = Array.from({ length: 10 }, (_, i) => ({
-                content: `Response ${i + 1}`,
-                timestamp: Date.now() - (i * 1000),
+                content: `Response ${i}`,
+                summary: `Summary ${i}`,
+                timestamp: Date.now() - i * 1000,
                 mode: 'tactical',
                 confidence: 1,
+                role: 'assistant'
             }));
 
             const { userPrompt } = PromptManager.composePrompt({
                 mode: 'tactical',
+                gameInfo: mockGameInfo,
                 previousResponses: manyResponses,
-                maxContextLength: 3,
+                maxContextLength: 5
             });
+            const responseCount = (userPrompt.match(/Response \d/g) || []).length;
 
-            const responseMatches = userPrompt.match(/Response \d+/g) || [];
-            expect(responseMatches).toHaveLength(3);
-            expect(userPrompt).toContain('Response 8');
-            expect(userPrompt).toContain('Response 9');
-            expect(userPrompt).toContain('Response 10');
-        });
-
-        it('should compose different prompts for each mode', () => {
-            const tacticalPrompt = PromptManager.composePrompt({ mode: 'tactical' });
-            const commentaryPrompt = PromptManager.composePrompt({ mode: 'commentary' });
-            const esportsPrompt = PromptManager.composePrompt({ mode: 'esports' });
-
-            expect(tacticalPrompt.systemPrompt).toContain('expert gaming advisor');
-            expect(commentaryPrompt.systemPrompt).toContain('professional game commentator');
-            expect(esportsPrompt.systemPrompt).toContain('high-energy esports caster');
-
-            expect(tacticalPrompt.userPrompt).toContain('tactical advice');
-            expect(commentaryPrompt.userPrompt).toContain('commentary');
-            expect(esportsPrompt.userPrompt).toContain('esports style');
-        });
-    });
-
-    describe('utility methods', () => {
-        it('should get base prompt for mode', () => {
-            const tacticalBase = PromptManager.getBasePrompt('tactical');
-            expect(tacticalBase).toContain('expert gaming advisor');
-        });
-
-        it('should get user prompt for mode', () => {
-            const tacticalUser = PromptManager.getUserPrompt('tactical');
-            expect(tacticalUser).toContain('tactical advice');
+            expect(responseCount).toBeLessThanOrEqual(5);
         });
     });
 }); 

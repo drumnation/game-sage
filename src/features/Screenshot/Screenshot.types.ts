@@ -1,5 +1,10 @@
-import type { ScreenshotConfig } from '@electron/types/index';
-import type { AIResponse } from '../../services/ai/types';
+import type { ScreenshotConfig as BaseScreenshotConfig, AIResponseWithSummary, AIMemoryEntry } from '@electron/types/index';
+
+// Extend the base ScreenshotConfig type with narrationMode
+export interface ScreenshotConfig extends BaseScreenshotConfig {
+    narrationMode?: boolean;
+    useHotkey?: boolean;
+}
 
 /**
  * Screenshot metadata containing capture information
@@ -22,7 +27,8 @@ export interface Screenshot {
     id: string;
     imageData: string;
     metadata: ScreenshotMetadata;
-    aiResponse?: AIResponse;
+    aiResponse?: AIResponseWithSummary;
+    aiMemory?: AIMemoryEntry[];
 }
 
 /**
@@ -57,6 +63,7 @@ export interface ScreenshotProps {
     isCapturing: boolean;
     isTransitioning?: boolean;
     isFlashing?: boolean;
+    totalCaptures?: number;
 }
 
 export interface ScreenshotControlsProps {
@@ -77,4 +84,6 @@ export interface ScreenshotSettingsProps {
     onSettingsChange: (settings: Partial<ScreenshotConfig & { useHotkey?: boolean }>) => void;
     isCapturing?: boolean;
     onHotkeyRecordingChange?: (isRecording: boolean) => void;
+    totalCaptures?: number;
+    lastCaptureTime?: number;
 } 

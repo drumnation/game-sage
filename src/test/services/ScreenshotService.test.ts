@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import Jimp from 'jimp';
 import { ScreenshotService } from '../../../electron/services/screenshot/ScreenshotService';
 import type { CaptureFrame, CaptureResult } from '@electron/types';
 
@@ -14,16 +14,8 @@ const isCaptureFrameArray = (results: CaptureResult[]): results is CaptureFrame[
 
 // Create a valid test image buffer
 const createTestImage = async () => {
-    return await sharp({
-        create: {
-            width: 100,
-            height: 100,
-            channels: 4,
-            background: { r: 255, g: 0, b: 0, alpha: 1 }
-        }
-    })
-        .jpeg()
-        .toBuffer();
+    const image = new Jimp(100, 100, 0xFF0000FF); // Red color with full alpha
+    return await image.getBufferAsync(Jimp.MIME_JPEG);
 };
 
 // Mock StorageService
@@ -115,17 +107,7 @@ describe('Screenshot Capture System', () => {
                 sceneChangeThreshold: 0.5
             });
 
-            const differentImage = await sharp({
-                create: {
-                    width: 100,
-                    height: 100,
-                    channels: 4,
-                    background: { r: 0, g: 255, b: 0, alpha: 1 }
-                }
-            })
-                .jpeg()
-                .toBuffer();
-
+            const differentImage = await Jimp.create(100, 100, 0x00FF00FF); // Green color with full alpha
             const screenshot = jest.requireMock('screenshot-desktop').default;
             screenshot
                 .mockResolvedValueOnce(testImageBuffer)
@@ -155,21 +137,10 @@ describe('Screenshot Capture System', () => {
 
             // Create a series of gradually changing images
             for (let i = 0; i < 5; i++) {
-                const gradualImage = await sharp({
-                    create: {
-                        width: 100,
-                        height: 100,
-                        channels: 4,
-                        background: {
-                            r: Math.floor(255 * (1 - i / 4)),
-                            g: Math.floor(255 * (i / 4)),
-                            b: 0,
-                            alpha: 1
-                        }
-                    }
-                })
-                    .jpeg()
-                    .toBuffer();
+                const r = Math.floor(255 * (1 - i / 4));
+                const g = Math.floor(255 * (i / 4));
+                const color = Jimp.rgbaToInt(r, g, 0, 255);
+                const gradualImage = await Jimp.create(100, 100, color);
 
                 screenshot.mockResolvedValueOnce(gradualImage);
                 results.push(await service.captureNow());

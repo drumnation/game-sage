@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { App } from 'antd';
-import type { ScreenshotConfig, APIResponse, CaptureFrame, CaptureError } from '@electron/types/index';
-import type { Screenshot } from '../Screenshot.types';
+import type { APIResponse, CaptureFrame, CaptureError, AIMemoryEntry } from '@electron/types/index';
+import type { Screenshot, ScreenshotConfig } from '../Screenshot.types';
 import { useAI } from '../../../hooks/useAI';
 
 export interface ScreenshotCaptureHook {
@@ -14,6 +14,8 @@ export interface ScreenshotCaptureHook {
     handleSettingsChange: (settings: Partial<ScreenshotConfig>) => void;
     handleCapture: () => Promise<void>;
     isFlashing: boolean;
+    totalCaptures: number;
+    lastCaptureTime: number | null;
 }
 
 export const useScreenshotCapture = () => {
@@ -24,9 +26,11 @@ export const useScreenshotCapture = () => {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const [isFlashing, setIsFlashing] = useState(false);
+    const [totalCaptures, setTotalCaptures] = useState(0);
     const lastCaptureRef = useRef<{ timestamp: number, displayId: string } | null>(null);
+    const aiMemoryRef = useRef<AIMemoryEntry[]>([]);
     const { message } = App.useApp();
-    const { analyze } = useAI();
+    const { analyze, currentMode } = useAI();
 
     // Load initial display selection from config
     useEffect(() => {
@@ -104,13 +108,51 @@ export const useScreenshotCapture = () => {
                 metadata: data.metadata,
             };
 
-            // Add the new screenshot first
-            setScreenshots(prev => [...prev, newScreenshot]);
+            // Add the new screenshot at the beginning
+            setScreenshots(prev => [newScreenshot, ...prev]);
 
+            // Increment total captures for all successful captures
+            console.log('Incrementing total captures');
+            setTotalCaptures(prev => prev + 1);
+
+            // Show success message only for hotkey captures
             if (data.metadata.isHotkeyCapture) {
                 message.success('Screenshot captured');
-                // Trigger AI analysis for hotkey captures
-                analyze(data.imageData).then(aiResponse => {
+            }
+
+            // Get current config for narration mode
+            const api = window.electronAPI;
+            if (!api) {
+                throw new Error('Electron API not available');
+            }
+
+            api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
+                if (!response.success || !response.data) {
+                    throw new Error('Failed to get config');
+                }
+
+                const config = response.data;
+
+                // Trigger AI analysis for all captures
+                analyze({
+                    imageBase64: data.imageData,
+                    memory: aiMemoryRef.current || [],
+                    narrationMode: config.narrationMode,
+                    captureInterval: config.captureInterval
+                }).then(aiResponse => {
+                    // Add new memory entry
+                    const newMemoryEntry: AIMemoryEntry = {
+                        timestamp: Date.now(),
+                        summary: aiResponse.summary || '',
+                        mode: currentMode
+                    };
+
+                    // Initialize or update memory array
+                    if (!aiMemoryRef.current) {
+                        aiMemoryRef.current = [];
+                    }
+                    aiMemoryRef.current = [newMemoryEntry, ...aiMemoryRef.current].slice(0, 10);
+
                     setScreenshots(prev => {
                         // Find and update the screenshot with AI response
                         const index = prev.findIndex(s => s.id === newScreenshot.id);
@@ -119,7 +161,8 @@ export const useScreenshotCapture = () => {
                         const updated = [...prev];
                         updated[index] = {
                             ...updated[index],
-                            aiResponse
+                            aiResponse,
+                            aiMemory: aiMemoryRef.current
                         };
                         return updated;
                     });
@@ -127,12 +170,15 @@ export const useScreenshotCapture = () => {
                     console.error('Failed to analyze screenshot:', error);
                     message.error('Failed to analyze screenshot');
                 });
-            }
+            }).catch((error: Error) => {
+                console.error('Failed to get config:', error);
+                message.error('Failed to get config');
+            });
         } catch (error) {
             console.error('Error handling capture frame:', error);
             message.error('Failed to process screenshot');
         }
-    }, [message, analyze, screenshots.length]);
+    }, [message, analyze, screenshots.length, currentMode]);
 
     const handleSettingsChange = useCallback((settings: Partial<ScreenshotConfig>) => {
         const api = window.electronAPI;
@@ -165,29 +211,34 @@ export const useScreenshotCapture = () => {
 
         try {
             setIsTransitioning(true);
+            console.log('Starting capture operation, current state:', { isCapturing });
 
             if (isCapturing) {
+                console.log('Attempting to stop capture...');
                 // Stop interval capture
                 const response = await api.stopCapture();
                 if (!response?.success) {
                     throw new Error('Failed to stop capture');
                 }
+                console.log('Successfully stopped capture, setting isCapturing to false');
                 setIsCapturing(false);
-                message.success('Capture stopped');
             } else {
+                console.log('Attempting to start capture...');
                 // Start interval capture
                 const response = await api.startCapture();
                 if (!response?.success) {
                     throw new Error('Failed to start capture');
                 }
+                console.log('Successfully started capture, setting isCapturing to true');
                 setIsCapturing(true);
-                message.success('Interval capture started');
             }
         } catch (error) {
+            console.error('Capture operation failed:', error);
             message.error(isCapturing ? 'Failed to stop capture' : 'Failed to start capture');
-            console.error('Capture error:', error);
+            console.log('Setting isCapturing to false due to error');
             setIsCapturing(false);
         } finally {
+            console.log('Capture operation completed, final state:', { isCapturing });
             setIsTransitioning(false);
         }
     }, [isCapturing, selectedDisplays.length, isConfigLoaded, message]);
@@ -228,16 +279,27 @@ export const useScreenshotCapture = () => {
         const api = window.electronAPI;
         if (!api) return;
 
+        console.log('Setting up capture-frame event listener');
         // Set max listeners to prevent warning
         api.setMaxListeners(20);
 
         // Always listen for capture frames
         api.on('capture-frame', handleCaptureFrame);
 
+        // Clean up by removing the listener when component unmounts
         return () => {
+            console.log('Cleaning up capture-frame event listener');
             api.off('capture-frame', handleCaptureFrame);
         };
     }, [handleCaptureFrame]);
+
+    // Reset total captures when stopping or starting
+    useEffect(() => {
+        if (!isCapturing) {
+            console.log('Resetting total captures to 0');
+            setTotalCaptures(0);
+        }
+    }, [isCapturing]);
 
     return {
         screenshots,
@@ -251,5 +313,7 @@ export const useScreenshotCapture = () => {
         handleCapture,
         handleSingleCapture,
         setCurrentIndex,
+        totalCaptures,
+        lastCaptureTime: lastCaptureRef.current?.timestamp || null
     };
 }; 

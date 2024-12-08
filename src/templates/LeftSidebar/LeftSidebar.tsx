@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs } from 'antd';
 import { Screenshot } from '../../features/Screenshot';
 import { AISettings } from '../../features/AI/components/AISettings';
+import { Logo } from '../../components/Logo/Logo';
 import type { ScreenshotConfig } from '@electron/types/index';
 import { useLeftSidebar } from './LeftSidebar.hook';
 import { LeftSidebarContainer } from './LeftSidebar.styles';
@@ -49,6 +50,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
     return (
         <LeftSidebarContainer>
+            <Logo />
             <Tabs
                 activeKey={activeTab}
                 items={items}

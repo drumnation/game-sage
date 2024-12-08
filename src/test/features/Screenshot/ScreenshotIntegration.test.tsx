@@ -8,6 +8,24 @@ import type { Screenshot as ScreenshotType } from '../../../features/Screenshot/
 import { ScreenshotPreview } from '../../../features/ScreenshotPreview/ScreenshotPreview';
 import { mockElectronAPI } from '../../helpers/mockElectron';
 
+// Mock antd
+jest.mock('antd', () => ({
+    ...jest.requireActual('antd'),
+    Modal: ({ open, children }: { open: boolean; children: React.ReactNode }) => (
+        open ? <div role="dialog">{children}</div> : null
+    ),
+    Divider: () => <hr />,
+    App: {
+        useApp: () => ({
+            message: {
+                error: jest.fn(),
+                success: jest.fn(),
+                warning: jest.fn()
+            }
+        })
+    }
+}));
+
 // Mock antd icons
 jest.mock('@ant-design/icons', () => ({
     KeyOutlined: () => <span data-testid="key-icon">🔑</span>,
@@ -47,7 +65,16 @@ jest.mock('antd', () => ({
     Modal: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
         open ? <div role="dialog">{children}</div> : null
     ),
-    Divider: () => <hr />
+    Divider: () => <hr />,
+    App: {
+        useApp: () => ({
+            message: {
+                error: jest.fn(),
+                success: jest.fn(),
+                warning: jest.fn()
+            }
+        })
+    }
 }));
 
 // Extend the mock type to include Jest mock properties
@@ -61,10 +88,24 @@ type MockElectronAPI = {
 
 // Set up mock electron API with proper on method
 const mockOn = jest.fn();
+const mockOff = jest.fn();
 const typedMockElectronAPI = {
     ...mockElectronAPI,
-    on: mockOn
-} as MockElectronAPI;
+    on: mockOn,
+    off: mockOff,
+    removeAllListeners: jest.fn(),
+    setMaxListeners: jest.fn(),
+    updateConfig: jest.fn(),
+    getConfig: jest.fn(),
+    captureNow: jest.fn(),
+    listDisplays: jest.fn(),
+    startCapture: jest.fn(),
+    stopCapture: jest.fn(),
+    updateHotkey: jest.fn(),
+    getHotkeys: jest.fn(),
+    setHotkeyMode: jest.fn(),
+    analyzeImage: jest.fn()
+} as unknown as MockElectronAPI;
 
 // Define store types
 interface RootState {
@@ -180,12 +221,13 @@ jest.mock('@features/ScreenshotPreview/ScreenshotPreview', () => ({
         screenshot,
         screenshots,
         currentIndex,
-        isPlaying
     }: {
-        screenshot: { imageData: string } | null;
-        screenshots: Array<{ imageData: string }>;
+        screenshot: { imageData: string; metadata: { timestamp: number } } | null;
+        screenshots: Array<{ imageData: string; metadata: { timestamp: number } }>;
         currentIndex: number;
-        isPlaying: boolean;
+        onPrevious: () => void;
+        onNext: () => void;
+        onSliderChange: (value: number) => void;
     }) => {
         if (!screenshot) {
             return (
@@ -202,7 +244,6 @@ jest.mock('@features/ScreenshotPreview/ScreenshotPreview', () => ({
                     data-testid="preview-image"
                 />
                 <div data-testid="preview-controls">
-                    <p>Playing: {isPlaying ? 'Yes' : 'No'}</p>
                     <p>Total Screenshots: {screenshots.length}</p>
                 </div>
             </div>
@@ -243,10 +284,8 @@ describe('Screenshot Feature Integration', () => {
                         screenshot={null}
                         screenshots={[]}
                         currentIndex={0}
-                        isPlaying={false}
                         onPrevious={jest.fn()}
                         onNext={jest.fn()}
-                        onPlayPause={jest.fn()}
                         onSliderChange={jest.fn()}
                     />
                 </div>

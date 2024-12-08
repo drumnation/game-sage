@@ -4,7 +4,7 @@ import type {
   ValidChannel,
   ChannelData,
   AIAnalysisRequest
-} from './types/index';
+} from './types';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -30,8 +30,11 @@ const api: ElectronAPI = {
   listDisplays: () => ipcRenderer.invoke('list-displays'),
   startCapture: () => ipcRenderer.invoke('start-capture'),
   stopCapture: () => ipcRenderer.invoke('stop-capture'),
+
+  // Hotkey Management
   updateHotkey: (action, accelerator) => ipcRenderer.invoke('update-hotkey', action, accelerator),
   getHotkeys: () => ipcRenderer.invoke('get-hotkeys'),
+  setHotkeyMode: (enabled: boolean) => ipcRenderer.send('set-hotkey-mode', enabled),
 
   // AI Analysis
   analyzeImage: (request: AIAnalysisRequest) => {

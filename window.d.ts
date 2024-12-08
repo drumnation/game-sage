@@ -42,6 +42,7 @@ export interface ElectronAPI {
     // Hotkey Management
     updateHotkey(action: string, accelerator: string): Promise<APIResponse<void>>;
     getHotkeys(): Promise<APIResponse<{ [key: string]: string }>>;
+    setHotkeyMode(enabled: boolean): void;
 
     // AI Analysis
     analyzeImage(request: AIAnalysisRequest): Promise<AIAnalysisResponse>;

@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { ScreenshotService } from './services/screenshot/ScreenshotService'
-import { HotkeyService } from './services/hotkey/HotkeyService'
+import { HotkeyService, setHotkeyModeState, getHotkeyModeState, setHotkeyService } from './services/hotkey/HotkeyService'
 import type { ScreenshotConfig } from './services/screenshot/types'
 import type { HotkeyConfig } from './services/hotkey/types'
 import type { DisplayInfo, CaptureResult } from './services/screenshot/types'
@@ -81,6 +81,14 @@ async function setupScreenshotService() {
         message: `Screenshot error: ${error.message}`,
         timestamp: Date.now(),
       });
+    }
+  });
+
+  // Forward capture frame events to renderer
+  screenshotService.on('capture-frame', (data) => {
+    if (mainWindow) {
+      console.log('[Frame Event] Forwarding frame to renderer');
+      mainWindow.webContents.send('capture-frame', data);
     }
   });
 
@@ -174,15 +182,15 @@ async function setupScreenshotService() {
 
 function setupHotkeyService() {
   hotkeyService = new HotkeyService();
+  setHotkeyService(hotkeyService);
 
   // Register default hotkeys
   if (screenshotService) {
     hotkeyService.registerHotkey('captureNow', 'CommandOrControl+Shift+C', async () => {
       try {
-        if (!screenshotService) return;
+        if (!screenshotService || !getHotkeyModeState()) return;
 
-        // Only notify UI that hotkey was pressed
-        // The UI will handle the capture
+        // Only notify UI that hotkey was pressed if hotkey mode is enabled
         mainWindow?.webContents.send('capture-hotkey');
       } catch (error) {
         console.error('Hotkey capture failed:', error);
@@ -191,7 +199,8 @@ function setupHotkeyService() {
 
     hotkeyService.registerHotkey('toggleCapture', 'CommandOrControl+Shift+T', async () => {
       try {
-        if (!screenshotService) return;
+        if (!screenshotService || !getHotkeyModeState()) return;
+
         if (screenshotService.isCapturing()) {
           await screenshotService.stop();
         } else {
@@ -273,3 +282,10 @@ function sendFrameToRenderer(result: CaptureResult) {
     });
   }
 }
+
+ipcMain.on('set-hotkey-mode', (_event, enabled: boolean) => {
+  setHotkeyModeState(enabled);
+  if (enabled && hotkeyService) {
+    hotkeyService.reregisterAll();
+  }
+});
