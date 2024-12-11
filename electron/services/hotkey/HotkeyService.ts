@@ -4,7 +4,7 @@ import type { HotkeyAction, RegisteredHotkey } from './types';
 const VALID_MODIFIERS = ['Command', 'CommandOrControl', 'Control', 'Ctrl', 'Alt', 'Option', 'AltGr', 'Shift', 'Super'];
 const VALID_KEY_PATTERN = /^[A-Z0-9]$|^F[1-9][0-9]?$|^(Plus|Space|Tab|Backspace|Delete|Insert|Return|Enter|Up|Down|Left|Right|Home|End|PageUp|PageDown|Escape|Esc|VolumeUp|VolumeDown|VolumeMute|MediaNextTrack|MediaPreviousTrack|MediaStop|MediaPlayPause|PrintScreen)$/i;
 
-let hotkeyModeEnabled = true; // Default to enabled
+let hotkeyModeEnabled = false; // Default to disabled
 let hotkeyService: HotkeyService | null = null;
 
 export const setHotkeyService = (service: HotkeyService) => {
@@ -29,6 +29,8 @@ export const getHotkeyModeState = () => hotkeyModeEnabled;
 export class HotkeyService {
     private registeredHotkeys: Map<HotkeyAction, RegisteredHotkey> = new Map();
     private originalCallbacks: Map<HotkeyAction, () => void> = new Map();
+    private lastActionTime: { [key: string]: number } = {};
+    private readonly DEBOUNCE_MS = 500;
 
     private validateAccelerator(accelerator: string): boolean {
         const parts = accelerator.split('+').map(part => part.trim());
@@ -68,14 +70,23 @@ export class HotkeyService {
         // Unregister existing hotkey if it exists
         this.unregisterHotkey(action);
 
-        // Create the registration
+        // Create the registration with debouncing
         const registration = {
             action,
             accelerator,
             callback: () => {
-                if (hotkeyModeEnabled) {
-                    callback();
+                if (!hotkeyModeEnabled) return;
+
+                const now = Date.now();
+                const lastTime = this.lastActionTime[action] || 0;
+
+                if (now - lastTime < this.DEBOUNCE_MS) {
+                    console.log(`Debouncing ${action}, too soon after last action`);
+                    return;
                 }
+
+                this.lastActionTime[action] = now;
+                callback();
             }
         };
 

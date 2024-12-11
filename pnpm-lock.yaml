@@ -130,6 +130,9 @@ importers:
       cross-fetch:
         specifier: ^4.0.0
         version: 4.0.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
       electron:
         specifier: ^30.0.1
         version: 30.5.1
@@ -2027,6 +2030,10 @@ packages:
 
   dotenv-expand@5.1.0:
     resolution: {integrity: sha512-YXQl1DSa4/PQyRfgrv6aoNjhasp/p4qs9FjJ4q4cQk+8m4r6k4ZSiEyytKG8f8W9gi8WsQtIObNmKd+tMzNTmA==}
+
+  dotenv@16.4.7:
+    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
+    engines: {node: '>=12'}
 
   dotenv@9.0.2:
     resolution: {integrity: sha512-I9OvvrHp4pIARv4+x9iuewrWycX6CcZtoAu1XrzPxc5UygMJXJZYmBsynku8IkrJwgypE5DGNjDPmPRhDCptUg==}
@@ -6432,6 +6439,8 @@ snapshots:
       webidl-conversions: 7.0.0
 
   dotenv-expand@5.1.0: {}
+
+  dotenv@16.4.7: {}
 
   dotenv@9.0.2: {}
 

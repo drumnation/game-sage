@@ -1,7 +1,12 @@
 {
   "name": "game-sage",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
+  "description": "An AI-powered game assistant application",
+  "author": {
+    "name": "David Mieloch",
+    "email": "davidmieloch@gmail.com"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -67,6 +72,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^9.1.0",
     "cross-fetch": "^4.0.0",
+    "dotenv": "^16.4.7",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "electron-playwright-helpers": "^1.7.1",
@@ -87,35 +93,76 @@
   "packageManager": "pnpm@9.13.2+sha512.88c9c3864450350e65a33587ab801acf946d7c814ed1134da4a924f6df5a2120fd36b46aab68f7cd1d413149112d53c7db3a4136624cfd00ff1846a0c6cef48a",
   "build": {
     "appId": "com.gamesage.app",
+    "productName": "Game Sage",
+    "asar": true,
     "mac": {
-      "target": [
-        "dmg"
-      ]
+      "target": {
+        "target": "dmg",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      }
     },
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
-      "icon": "build/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "include": "build/installer.nsh"
+      "deleteAppDataOnUninstall": true,
+      "include": "build/installer.nsh",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Game Sage",
+      "uninstallDisplayName": "Game Sage"
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "package.json"
     ],
     "asarUnpack": [
       "node_modules/screenshot-desktop/**/*"
-    ]
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    }
   },
   "config": {
     "runtime": "electron-runtime"
   },
   "optionalDependencies": {
     "fsevents": "*"
+  },
+  "vite": {
+    "build": {
+      "chunkSizeWarningLimit": 1000,
+      "rollupOptions": {
+        "output": {
+          "manualChunks": {
+            "vendor": [
+              "react",
+              "react-dom",
+              "antd",
+              "@ant-design/icons",
+              "@mui/material",
+              "styled-components"
+            ]
+          }
+        }
+      }
+    }
   }
 }

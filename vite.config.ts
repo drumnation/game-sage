@@ -1,11 +1,42 @@
 import { defineConfig } from 'vite'
-import * as path from 'path'
+import path from 'node:path'
 import electron from 'vite-plugin-electron/simple'
 import react from '@vitejs/plugin-react'
-import commonjs from '@rollup/plugin-commonjs'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig({
+  base: './',
+  plugins: [
+    react(),
+    electron({
+      main: {
+        entry: 'electron/main.ts',
+      },
+      preload: {
+        input: path.join(__dirname, 'electron/preload.ts'),
+      },
+      renderer: {},
+    }),
+  ],
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: [
+            'react',
+            'react-dom',
+            'antd',
+            '@ant-design/icons',
+            '@mui/material',
+            'styled-components'
+          ]
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@atoms': path.resolve(__dirname, 'src/components/atoms/index'),
@@ -22,65 +53,4 @@ export default defineConfig(({ command }) => ({
       '@test/*': path.resolve(__dirname, 'src/test/*'),
     }
   },
-  plugins: [
-    react(),
-    electron({
-      main: {
-        entry: 'electron/main.ts',
-        vite: {
-          mode: command,
-          build: {
-            sourcemap: true,
-            outDir: 'dist-electron',
-            minify: command === 'build',
-            rollupOptions: {
-              external: ['sharp', 'electron'],
-              output: {
-                format: 'commonjs'
-              },
-              plugins: [
-                commonjs({
-                  dynamicRequireTargets: [
-                    'node_modules/sharp/**/*.node',
-                    '@img/sharp-darwin-arm64/sharp.node',
-                    '@img/sharp-wasm32/sharp.node'
-                  ],
-                })
-              ]
-            }
-          },
-          resolve: {
-            conditions: ['node']
-          }
-        },
-      },
-      preload: {
-        input: path.join(__dirname, 'electron/preload.ts'),
-        vite: {
-          mode: command,
-          build: {
-            sourcemap: true,
-            outDir: 'dist-electron',
-            minify: command === 'build',
-            rollupOptions: {
-              output: {
-                format: 'commonjs'
-              }
-            }
-          },
-          resolve: {
-            conditions: ['node']
-          }
-        },
-      },
-      renderer: command === 'serve' ? {} : undefined,
-    }),
-  ],
-  build: {
-    sourcemap: true,
-    rollupOptions: {
-      external: ['electron'],
-    }
-  },
-  base: process.env.ELECTRON == "true" ? './' : '.',
-}))
+})

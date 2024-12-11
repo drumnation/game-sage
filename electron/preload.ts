@@ -34,7 +34,8 @@ const api: ElectronAPI = {
   // Hotkey Management
   updateHotkey: (action, accelerator) => ipcRenderer.invoke('update-hotkey', action, accelerator),
   getHotkeys: () => ipcRenderer.invoke('get-hotkeys'),
-  setHotkeyMode: (enabled: boolean) => ipcRenderer.send('set-hotkey-mode', enabled),
+  setHotkeyMode: (enabled) => ipcRenderer.invoke('set-hotkey-mode', enabled),
+  getHotkeyMode: () => ipcRenderer.invoke('get-hotkey-mode'),
 
   // AI Analysis
   analyzeImage: (request: AIAnalysisRequest) => {

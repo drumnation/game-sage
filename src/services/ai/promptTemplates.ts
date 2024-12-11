@@ -2,17 +2,23 @@ import { GameMode, GameInfo } from './types';
 import { ComposedPrompt } from './PromptManager';
 
 const buildSystemPrompt = (basePrompt: string, gameInfo?: GameInfo, customInstructions?: string[]): string => {
-    let prompt = basePrompt;
+    let prompt = '';
 
+    // Start with custom instructions if available as they take highest priority
+    if (customInstructions?.length) {
+        prompt = customInstructions.map(i => `${i}`).join('\n\n');
+        prompt += '\n\n--- Base Guidelines (Lower Priority) ---\n\n';
+    }
+
+    // Add base prompt with lower priority
+    prompt += basePrompt;
+
+    // Add game context if available
     if (gameInfo) {
         prompt += `\n\nGame Context:\n- Game: ${gameInfo.name}\n- Type: ${gameInfo.identifier}`;
         if (gameInfo.customInstructions?.length) {
             prompt += '\n- Game-specific instructions:\n' + gameInfo.customInstructions.map(i => `  * ${i}`).join('\n');
         }
-    }
-
-    if (customInstructions?.length) {
-        prompt += '\n\nCustom Instructions:\n' + customInstructions.map(i => `- ${i}`).join('\n');
     }
 
     return prompt;

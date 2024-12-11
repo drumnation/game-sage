@@ -8,6 +8,8 @@ export class ShortcutsService extends EventEmitter {
     private window: BrowserWindow | null = null;
     private isCapturing = false;
     private registeredShortcuts: Set<string> = new Set();
+    private lastActionTime: { [key: string]: number } = {};
+    private readonly DEBOUNCE_MS = 500;
 
     constructor(config: Partial<ShortcutConfig> = {}) {
         super();
@@ -50,11 +52,22 @@ export class ShortcutsService extends EventEmitter {
         try {
             // Check if shortcut is already registered
             if (electronLocalshortcut.isRegistered(this.window, accelerator)) {
-                throw new Error(`Shortcut ${accelerator} is already registered`);
+                console.log(`Shortcut ${accelerator} is already registered, skipping`);
+                return;
             }
 
-            // Register the shortcut
+            // Register the shortcut with debouncing
             electronLocalshortcut.register(this.window, accelerator, () => {
+                const now = Date.now();
+                const lastTime = this.lastActionTime[action] || 0;
+
+                if (now - lastTime < this.DEBOUNCE_MS) {
+                    console.log(`Debouncing ${action}, too soon after last action`);
+                    return;
+                }
+
+                this.lastActionTime[action] = now;
+
                 switch (action) {
                     case 'startCapture':
                     case 'stopCapture':

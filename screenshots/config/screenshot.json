@@ -1,5 +1,5 @@
 {
-  "captureInterval": 30,
+  "captureInterval": 3e-26,
   "format": "jpeg",
   "quality": 80,
   "detectSceneChanges": true,
@@ -7,7 +7,12 @@
   "maxConcurrentCaptures": 1,
   "narrationMode": true,
   "activeDisplays": [
-    "1"
+    "2"
   ],
-  "useHotkey": true
+  "useHotkey": false,
+  "config": {
+    "activeDisplays": [
+      "1"
+    ]
+  }
 }

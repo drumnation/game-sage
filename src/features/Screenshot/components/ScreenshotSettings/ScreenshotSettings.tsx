@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import { Form, InputNumber, Select, Switch, Button, Slider, Modal, Divider } from 'antd';
 import { KeyOutlined, RedoOutlined } from '@ant-design/icons';
 import type { ScreenshotSettingsProps } from '../../Screenshot.types';
-import type { ScreenshotConfig, APIResponse } from '@electron/types';
+import type { ScreenshotConfig } from '@electron/types';
 import { useHotkeyManager } from '../../../../store/hooks/useHotkeyManager';
 import { HotkeyInputContainer, HotkeyInput, HotkeyButtonGroup } from './ScreenshotSettings.styles';
 import { CountdownTimer } from '../../../../components/atoms/CountdownTimer';
@@ -42,50 +42,51 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
         updateHotkey
     } = useHotkeyManager();
 
+    // Load initial config and settings
+    useEffect(() => {
+        const api = window.electronAPI;
+        if (!api) return;
+
+        // Load config and hotkey mode state
+        Promise.all([
+            api.getConfig(),
+            api.getHotkeyMode()
+        ]).then(([configResponse, hotkeyModeResponse]) => {
+            if (configResponse.success && configResponse.data) {
+                const config = configResponse.data;
+                const formConfig = {
+                    ...config,
+                    captureInterval: config.captureInterval / 1000,
+                };
+                form.setFieldsValue(formConfig);
+            }
+
+            if (hotkeyModeResponse.success) {
+                form.setFieldValue('useHotkey', hotkeyModeResponse.data);
+            }
+        });
+
+        // Load saved hotkey
+        const savedHotkey = localStorage.getItem('captureHotkey');
+        if (savedHotkey) {
+            updateHotkey(savedHotkey);
+        }
+    }, [form, updateHotkey]);
+
     // Notify parent of recording state changes
     useEffect(() => {
         onHotkeyRecordingChange?.(isRecordingHotkey);
     }, [isRecordingHotkey, onHotkeyRecordingChange]);
 
-    // Load initial config and settings from storage
-    useEffect(() => {
-        const api = window.electronAPI;
-        if (!api) return;
-
-        // Load config
-        api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
-            if (response.success && response.data) {
-                const config = response.data;
-                // Convert interval from milliseconds to seconds for the form
-                const formConfig = {
-                    ...config,
-                    captureInterval: config.captureInterval / 1000,
-                    useHotkey: localStorage.getItem('useHotkey') === 'true'
-                };
-                console.log('Setting form values:', formConfig);
-                form.setFieldsValue(formConfig);
-            }
-        });
-
-        // Load hotkey
-        const savedHotkey = localStorage.getItem('captureHotkey');
-        if (savedHotkey) {
-            updateHotkey(savedHotkey);
-        }
-    }, [form, onSettingsChange, updateHotkey]);
-
     const handleValuesChange = useCallback((changedValues: FormChangedValues, allValues: FormValues) => {
         if (isCapturing) return;
 
-        console.log('Form values changed:', {
-            changedValues,
-            allValues
-        });
-
         // Handle hotkey mode change
         if ('useHotkey' in changedValues) {
-            // Save to localStorage
-            localStorage.setItem('useHotkey', String(changedValues.useHotkey));
+            const api = window.electronAPI;
+            if (api) {
+                api.setHotkeyMode(changedValues.useHotkey || false);
+            }
 
             // Reset scene detection when switching to hotkey mode
             if (changedValues.useHotkey) {
@@ -100,10 +101,6 @@ export const ScreenshotSettings: React.FC<ScreenshotSettingsProps> = ({
         const settingsToSend = { ...allValues };
         if ('captureInterval' in changedValues) {
             settingsToSend.captureInterval = allValues.captureInterval * 1000;
-            console.log('Converting and sending interval to backend:', {
-                formValue: allValues.captureInterval,
-                backendValue: settingsToSend.captureInterval
-            });
         }
 
         // Notify parent of changes

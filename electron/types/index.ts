@@ -106,7 +106,8 @@ export interface ElectronAPI {
     // Hotkey Management
     updateHotkey(action: string, accelerator: string): Promise<APIResponse<void>>;
     getHotkeys(): Promise<APIResponse<{ [key: string]: string }>>;
-    setHotkeyMode(enabled: boolean): void;
+    setHotkeyMode(enabled: boolean): Promise<APIResponse<void>>;
+    getHotkeyMode(): Promise<APIResponse<boolean>>;
 
     // AI Analysis
     analyzeImage(request: AIAnalysisRequest): Promise<AIAnalysisResponse>;

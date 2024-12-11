@@ -72,7 +72,18 @@ Example response format:
 
     public static composePrompt(config: PromptConfig): ComposedPrompt {
         const { mode, gameInfo, customInstructions, previousResponses } = config;
-        let systemPrompt = this.BASE_PROMPTS[mode];
+        let systemPrompt = '';
+
+        // Start with custom instructions if available as they take highest priority
+        if (customInstructions?.length) {
+            systemPrompt = customInstructions.map(i => `${i}`).join('\n\n');
+
+            // Add a separator before base prompts
+            systemPrompt += '\n\n--- Base Guidelines (Lower Priority) ---\n\n';
+        }
+
+        // Add base prompt with lower priority
+        systemPrompt += this.BASE_PROMPTS[mode];
 
         // Add game context if available
         if (gameInfo) {
@@ -84,12 +95,6 @@ Example response format:
                 systemPrompt += '\nGame-specific instructions:\n' +
                     gameInfo.customInstructions.map(i => `- ${i}`).join('\n');
             }
-        }
-
-        // Add custom instructions if available
-        if (customInstructions?.length) {
-            systemPrompt += '\n\nCustom Instructions:\n' +
-                customInstructions.map(i => `- ${i}`).join('\n');
         }
 
         let userPrompt = this.USER_PROMPTS[mode];

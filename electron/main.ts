@@ -6,6 +6,16 @@ import type { ScreenshotConfig } from './services/screenshot/types'
 import type { HotkeyConfig } from './services/hotkey/types'
 import type { DisplayInfo, CaptureResult } from './services/screenshot/types'
 import { AIService } from './services/ai/AIService'
+import { config } from 'dotenv'
+
+// Load environment variables from .env file
+config()
+
+// Validate required environment variables
+if (!process.env.OPENAI_API_KEY) {
+  console.error('Error: OPENAI_API_KEY environment variable is not set')
+  app.quit()
+}
 
 interface APIResponse<T = void> {
   success: boolean;
@@ -184,11 +194,21 @@ function setupHotkeyService() {
   hotkeyService = new HotkeyService();
   setHotkeyService(hotkeyService);
 
-  // Register default hotkeys
+  // Register default hotkeys with debouncing
   if (screenshotService) {
+    let lastCaptureTime = 0;
+    const DEBOUNCE_MS = 500; // Prevent captures within 500ms of each other
+
     hotkeyService.registerHotkey('captureNow', 'CommandOrControl+Shift+C', async () => {
       try {
         if (!screenshotService || !getHotkeyModeState()) return;
+
+        const now = Date.now();
+        if (now - lastCaptureTime < DEBOUNCE_MS) {
+          console.log('Debouncing capture, too soon after last capture');
+          return;
+        }
+        lastCaptureTime = now;
 
         // Only notify UI that hotkey was pressed if hotkey mode is enabled
         mainWindow?.webContents.send('capture-hotkey');
@@ -213,6 +233,15 @@ function setupHotkeyService() {
   }
 
   // IPC handlers for hotkey management
+  ipcMain.handle('set-hotkey-mode', (_event, enabled: boolean) => {
+    setHotkeyModeState(enabled);
+    return { success: true };
+  });
+
+  ipcMain.handle('get-hotkey-mode', () => {
+    return { success: true, data: getHotkeyModeState() };
+  });
+
   ipcMain.handle('update-hotkey', async (_event, action: keyof HotkeyConfig, accelerator: string) => {
     try {
       hotkeyService?.updateHotkey(action, accelerator);
@@ -231,7 +260,7 @@ function setupHotkeyService() {
         hotkeys[action as keyof HotkeyConfig] = hotkey.accelerator;
       }
     });
-    return hotkeys;
+    return { success: true, data: hotkeys };
   });
 }
 
@@ -282,10 +311,3 @@ function sendFrameToRenderer(result: CaptureResult) {
     });
   }
 }
-
-ipcMain.on('set-hotkey-mode', (_event, enabled: boolean) => {
-  setHotkeyModeState(enabled);
-  if (enabled && hotkeyService) {
-    hotkeyService.reregisterAll();
-  }
-});
