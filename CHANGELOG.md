@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2024-12-12
+
+### Added
+
+- Enhanced screenshot capture hook with improved error handling
+- Added new screenshot capture configuration options
+- Implemented robust error boundaries for screenshot failures
+
+### Changed
+
+- Refactored screenshot capture logic for better reliability
+- Updated screenshot capture types for improved type safety
+- Enhanced error messaging for better user feedback
+
+### Fixed
+
+- Screenshot capture error handling edge cases
+- Type definitions in screenshot capture hook
+- Screenshot capture configuration validation
+
 ## [0.5.0] - 2024-03-08
 
 ### Changed

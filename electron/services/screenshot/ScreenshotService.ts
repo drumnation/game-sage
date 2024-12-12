@@ -9,8 +9,9 @@ import Jimp from 'jimp';
 
 export class ScreenshotService extends EventEmitter {
     private config: ScreenshotConfig;
-    private captureInterval: NodeJS.Timeout | null;
-    private lastFrames: Map<string, Buffer>;
+    private captureInterval: NodeJS.Timeout | null = null;
+    private lastFrames: Map<string, Buffer> = new Map();
+    private lastFrameEmitTime: Map<string, number> = new Map();
     private storage: StorageService;
     private frameCount: number = 0;
     private initialized: boolean = false;
@@ -199,24 +200,52 @@ export class ScreenshotService extends EventEmitter {
         try {
             const displays = await this.getDisplays();
             const activeDisplays = this.config.activeDisplays || [displays[0].id];
-            console.log(`[Frame Event] Starting capture. Current frame count: ${this.frameCount}`);
+            console.log(`[Capture Service] Starting hotkey capture. Active displays: ${activeDisplays.join(', ')}`);
 
             const results: CaptureResult[] = [];
+            const captureTime = Date.now(); // Use same timestamp for all frames
 
             for (const display of displays) {
                 if (activeDisplays.includes(display.id)) {
-                    const result = await this.captureDisplay(display);
+                    console.log(`[Capture Service] Capturing display ${display.id}`);
+                    const result = await this.captureDisplay(display, captureTime);
                     if (result) {
+                        console.log(`[Capture Service] Successfully captured display ${display.id}`);
+
+                        // Set hotkey flag
+                        result.metadata.isHotkeyCapture = true;
                         results.push(result);
                         this.frameCount++;
-                        console.log(`[Frame Event] Captured frame ${this.frameCount} for display: ${display.id}`);
+
+                        // Only emit if we haven't recently emitted for this display
+                        const lastEmitTime = this.lastFrameEmitTime.get(display.id) || 0;
+                        const timeSinceLastEmit = captureTime - lastEmitTime;
+
+                        console.log(`[Capture Service] Frame emission check for display ${display.id}:`, {
+                            captureTime,
+                            lastEmitTime,
+                            timeSinceLastEmit,
+                            willEmit: timeSinceLastEmit > 500
+                        });
+
+                        if (timeSinceLastEmit > 500) { // 500ms debounce
+                            console.log(`[Capture Service] Emitting frame for display ${display.id}`);
+                            this.emit('capture-frame', {
+                                imageData: result.imageData,
+                                metadata: result.metadata
+                            });
+                            this.lastFrameEmitTime.set(display.id, captureTime);
+                        } else {
+                            console.log(`[Capture Service] Skipping frame emission for display ${display.id} (within debounce period)`);
+                        }
                     }
                 }
             }
 
+            console.log(`[Capture Service] Hotkey capture complete. Captured ${results.length} frames`);
             return results;
         } catch (error) {
-            console.error('Failed to capture:', error);
+            console.error('[Capture Service] Failed to capture:', error);
             this.emit('error', error);
             throw error;
         }
@@ -236,15 +265,23 @@ export class ScreenshotService extends EventEmitter {
                     const result = await this.captureDisplay(display);
                     if (result) {
                         results.push(result);
-                        console.log(`Emitting capture frame for display: ${display.id}`);
-                        // Emit the capture frame event
-                        this.emit('capture-frame', {
-                            imageData: result.imageData,
-                            metadata: {
-                                ...result.metadata,
-                                isIntervalCapture: true
-                            }
-                        });
+
+                        // Add debouncing for frame emission
+                        const now = Date.now();
+                        const lastEmitTime = this.lastFrameEmitTime.get(display.id) || 0;
+                        if (now - lastEmitTime > 500) { // 500ms debounce
+                            console.log(`Emitting capture frame for display: ${display.id}`);
+                            this.emit('capture-frame', {
+                                imageData: result.imageData,
+                                metadata: {
+                                    ...result.metadata,
+                                    isIntervalCapture: true
+                                }
+                            });
+                            this.lastFrameEmitTime.set(display.id, now);
+                        } else {
+                            console.log(`Skipping duplicate frame emission for display: ${display.id} (within debounce period)`);
+                        }
                     }
                 }
             }
@@ -263,7 +300,7 @@ export class ScreenshotService extends EventEmitter {
         }
     }
 
-    private async captureDisplay(display: DisplayInfo): Promise<CaptureResult | null> {
+    private async captureDisplay(display: DisplayInfo, timestamp?: number): Promise<CaptureResult | null> {
         try {
             // Convert display.id to number for screenshot-desktop
             const displayId = parseInt(display.id);
@@ -274,7 +311,7 @@ export class ScreenshotService extends EventEmitter {
             const buffer = await screenshot({ screen: displayId - 1 }); // screenshot-desktop uses 0-based index
 
             const metadata: ScreenshotMetadata = {
-                timestamp: Date.now(),
+                timestamp: timestamp || Date.now(),
                 displayId: display.id,
                 width: display.bounds.width,
                 height: display.bounds.height,

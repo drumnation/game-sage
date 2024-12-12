@@ -3,6 +3,8 @@ import { App } from 'antd';
 import type { APIResponse, CaptureFrame, CaptureError, AIMemoryEntry } from '@electron/types/index';
 import type { Screenshot, ScreenshotConfig } from '../Screenshot.types';
 import { useAI } from '../../../hooks/useAI';
+import { useDispatch } from 'react-redux';
+import { clearPendingAnalysis } from '../../../store/slices/aiSlice';
 
 export interface ScreenshotCaptureHook {
     isCapturing: boolean;
@@ -18,6 +20,10 @@ export interface ScreenshotCaptureHook {
     lastCaptureTime: number | null;
 }
 
+// Add static ref for toast debouncing that's shared across all instances
+const TOAST_DEBOUNCE_TIME = 1000; // 1 second
+let lastToastTime = 0;
+
 export const useScreenshotCapture = () => {
     const [selectedDisplays, setSelectedDisplays] = useState<string[]>([]);
     const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
@@ -27,20 +33,40 @@ export const useScreenshotCapture = () => {
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const [isFlashing, setIsFlashing] = useState(false);
     const [totalCaptures, setTotalCaptures] = useState(0);
-    const lastCaptureRef = useRef<{ timestamp: number, displayId: string } | null>(null);
+    const lastCaptureRef = useRef<{ timestamp: number, displayId: string, isHotkeyCapture: boolean, processed: boolean } | null>(null);
     const aiMemoryRef = useRef<AIMemoryEntry[]>([]);
+    const cleanupRef = useRef<(() => void) | null>(null);
     const { message } = App.useApp();
     const { analyze, currentMode } = useAI();
+    const dispatch = useDispatch();
+
+    const showToast = useCallback((type: 'success' | 'error', content: string) => {
+        const now = Date.now();
+        if (now - lastToastTime > TOAST_DEBOUNCE_TIME) {
+            if (type === 'success') {
+                message.success(content);
+            } else {
+                message.error(content);
+            }
+            lastToastTime = now;
+            console.log(`[Frame Handler] Showing ${type} toast: ${content}`);
+        } else {
+            console.log(`[Frame Handler] Skipping ${type} toast (debounced): ${content}`);
+        }
+    }, [message]);
+
+    // Add a ref to track if config has been loaded
+    const configLoadedRef = useRef(false);
 
     // Load initial display selection from config
     useEffect(() => {
         const api = window.electronAPI;
-        if (!api) {
-            console.error('Electron API not available for config loading');
+        if (!api || configLoadedRef.current) {
             return;
         }
 
         console.log('Starting config loading process...');
+        configLoadedRef.current = true;
         api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
             console.log('Config loading response:', response);
             if (response.success && response.data?.activeDisplays?.length) {
@@ -65,81 +91,95 @@ export const useScreenshotCapture = () => {
 
     const handleCaptureFrame = useCallback((data: CaptureFrame | CaptureError) => {
         try {
+            console.log('[Frame Handler] Received frame event:', {
+                isError: 'error' in data,
+                hasMetadata: 'metadata' in data,
+                timestamp: 'metadata' in data ? data.metadata.timestamp : undefined,
+                isHotkeyCapture: 'metadata' in data ? data.metadata.isHotkeyCapture : undefined,
+                displayId: 'metadata' in data ? data.metadata.displayId : undefined
+            });
+
             // Check if this is a CaptureError
             if ('error' in data || !('metadata' in data)) {
                 if ('message' in data) {
-                    console.error('Capture error:', data.message);
-                    message.error(data.message);
+                    console.error('[Frame Handler] Capture error:', data.message);
+                    showToast('error', data.message);
                 } else {
-                    console.error('Invalid capture data received');
-                    message.error('Failed to process screenshot');
+                    console.error('[Frame Handler] Invalid capture data received');
+                    showToast('error', 'Failed to process screenshot');
                 }
                 return;
             }
 
-            // At this point, TypeScript knows data is CaptureFrame
             // Check if this frame is too close to the last capture
             if (lastCaptureRef.current) {
-                const timeDiff = data.metadata.timestamp - lastCaptureRef.current.timestamp;
+                const timeDiff = Math.abs(data.metadata.timestamp - lastCaptureRef.current.timestamp);
                 const isSameDisplay = data.metadata.displayId === lastCaptureRef.current.displayId;
+                const isSameHotkeyState = (data.metadata.isHotkeyCapture ?? false) === lastCaptureRef.current.isHotkeyCapture;
 
-                // Ignore frames within 500ms of the last capture from the same display
-                if (timeDiff < 500 && isSameDisplay) {
-                    console.log('Ignoring duplicate frame capture', {
+                // Ignore frames that are within 100ms of the last capture for the same display
+                if (timeDiff < 100 && isSameDisplay && isSameHotkeyState) {
+                    console.log('[Frame Handler] Ignoring duplicate frame capture', {
                         timeDiff,
                         currentTimestamp: data.metadata.timestamp,
                         lastTimestamp: lastCaptureRef.current.timestamp,
-                        displayId: data.metadata.displayId
+                        displayId: data.metadata.displayId,
+                        isHotkeyCapture: data.metadata.isHotkeyCapture ?? false
                     });
                     return;
                 }
             }
 
-            // Update the last capture reference
-            lastCaptureRef.current = {
-                timestamp: data.metadata.timestamp,
-                displayId: data.metadata.displayId
-            };
-
-            // Create new screenshot object
+            // Create new screenshot object with unique ID
             const newScreenshot = {
-                id: `${Date.now()}-${screenshots.length}`,
+                id: `${data.metadata.timestamp}-${Math.random().toString(36).substring(2, 15)}-${screenshots.length}`,
                 imageData: `data:image/jpeg;base64,${data.imageData}`,
                 metadata: data.metadata,
             };
 
-            // Add the new screenshot at the beginning
-            setScreenshots(prev => [newScreenshot, ...prev]);
+            // Update the last capture reference before processing
+            lastCaptureRef.current = {
+                timestamp: data.metadata.timestamp,
+                displayId: data.metadata.displayId,
+                isHotkeyCapture: data.metadata.isHotkeyCapture ?? false,
+                processed: false // Mark as not processed yet
+            };
 
-            // Increment total captures for all successful captures
-            console.log('Incrementing total captures');
-            setTotalCaptures(prev => prev + 1);
+            // Clear any pending analysis before starting new one
+            dispatch(clearPendingAnalysis());
 
-            // Show success message only for hotkey captures
-            if (data.metadata.isHotkeyCapture) {
-                message.success('Screenshot captured');
-            }
+            // Add the new screenshot and trigger AI analysis
+            setScreenshots(prev => {
+                const updatedScreenshots = [newScreenshot, ...prev];
+                return updatedScreenshots;
+            });
 
-            // Get current config for narration mode
-            const api = window.electronAPI;
-            if (!api) {
-                throw new Error('Electron API not available');
-            }
+            // Trigger AI analysis after updating screenshots
+            console.log('[Frame Handler] Starting AI analysis for screenshot:', {
+                id: newScreenshot.id,
+                mode: currentMode,
+                memoryCount: aiMemoryRef.current?.length || 0
+            });
 
-            api.getConfig().then((response: APIResponse<ScreenshotConfig>) => {
-                if (!response.success || !response.data) {
-                    throw new Error('Failed to get config');
-                }
+            // Wait a tick to ensure state is updated
+            setTimeout(() => {
+                analyze(
+                    data.imageData,
+                    currentMode,
+                    aiMemoryRef.current || [],
+                    newScreenshot.id
+                ).then(aiResponse => {
+                    console.log('[Frame Handler] AI analysis completed:', {
+                        id: newScreenshot.id,
+                        hasResponse: !!aiResponse,
+                        contentLength: aiResponse?.content?.length
+                    });
 
-                const config = response.data;
+                    if (!aiResponse) {
+                        console.log('[Frame Handler] Skipping AI response processing - null response');
+                        return;
+                    }
 
-                // Trigger AI analysis for all captures
-                analyze({
-                    imageBase64: data.imageData,
-                    memory: aiMemoryRef.current || [],
-                    narrationMode: config.narrationMode,
-                    captureInterval: config.captureInterval
-                }).then(aiResponse => {
                     // Add new memory entry
                     const newMemoryEntry: AIMemoryEntry = {
                         timestamp: Date.now(),
@@ -147,38 +187,64 @@ export const useScreenshotCapture = () => {
                         mode: currentMode
                     };
 
-                    // Initialize or update memory array
-                    if (!aiMemoryRef.current) {
-                        aiMemoryRef.current = [];
-                    }
-                    aiMemoryRef.current = [newMemoryEntry, ...aiMemoryRef.current].slice(0, 10);
+                    // Update memory array immutably
+                    aiMemoryRef.current = [newMemoryEntry, ...(aiMemoryRef.current || [])].slice(0, 10);
 
-                    setScreenshots(prev => {
-                        // Find and update the screenshot with AI response
-                        const index = prev.findIndex(s => s.id === newScreenshot.id);
-                        if (index === -1) return prev;
+                    console.log('[Frame Handler] Updating screenshot with AI response:', {
+                        id: newScreenshot.id,
+                        memoryCount: aiMemoryRef.current.length
+                    });
 
-                        const updated = [...prev];
+                    // Update the screenshot with AI response
+                    setScreenshots(current => {
+                        const index = current.findIndex(s => s.id === newScreenshot.id);
+                        if (index === -1) {
+                            console.log('[Frame Handler] Screenshot not found for AI update:', newScreenshot.id);
+                            return current;
+                        }
+
+                        const updated = [...current];
                         updated[index] = {
                             ...updated[index],
-                            aiResponse,
-                            aiMemory: aiMemoryRef.current
+                            aiResponse: {
+                                content: aiResponse.content,
+                                summary: aiResponse.summary || '',
+                                role: 'assistant'
+                            },
+                            aiMemory: [...aiMemoryRef.current]
                         };
                         return updated;
                     });
+
+                    // Mark as processed after successful AI analysis
+                    if (lastCaptureRef.current?.timestamp === data.metadata.timestamp) {
+                        lastCaptureRef.current = {
+                            ...lastCaptureRef.current,
+                            processed: true
+                        };
+                    }
                 }).catch((error: Error) => {
-                    console.error('Failed to analyze screenshot:', error);
-                    message.error('Failed to analyze screenshot');
+                    // Only show error if it's not a duplicate analysis request
+                    if (error.message !== 'Duplicate analysis request') {
+                        console.error('[Frame Handler] Failed to analyze screenshot:', error);
+                        showToast('error', 'Failed to analyze screenshot');
+                    }
                 });
-            }).catch((error: Error) => {
-                console.error('Failed to get config:', error);
-                message.error('Failed to get config');
-            });
+            }, 0);
+
+            // Increment total captures for all successful captures
+            console.log('[Frame Handler] Incrementing total captures');
+            setTotalCaptures(prev => prev + 1);
+
+            // Show success message only for hotkey captures
+            if (data.metadata.isHotkeyCapture) {
+                showToast('success', 'Screenshot captured');
+            }
         } catch (error) {
-            console.error('Error handling capture frame:', error);
-            message.error('Failed to process screenshot');
+            console.error('[Frame Handler] Error handling capture frame:', error);
+            showToast('error', 'Failed to process screenshot');
         }
-    }, [message, analyze, screenshots.length, currentMode]);
+    }, [showToast, screenshots.length, analyze, currentMode]);
 
     const handleSettingsChange = useCallback((settings: Partial<ScreenshotConfig>) => {
         const api = window.electronAPI;
@@ -263,7 +329,11 @@ export const useScreenshotCapture = () => {
             triggerFlash(); // Flash the button when hotkey is pressed
             const response = await api.captureNow();
             if (!response?.success) {
-                throw new Error('Failed to capture');
+                if (response?.error === 'Capture in progress' || response?.error === 'Too soon after last capture') {
+                    // Silently ignore these errors
+                    return;
+                }
+                throw new Error(response?.error || 'Failed to capture');
             }
             // Don't show any toast here since the frame event will trigger one
         } catch (error) {
@@ -279,19 +349,35 @@ export const useScreenshotCapture = () => {
         const api = window.electronAPI;
         if (!api) return;
 
-        console.log('Setting up capture-frame event listener');
-        // Set max listeners to prevent warning
-        api.setMaxListeners(20);
+        // Clean up any existing listener first
+        if (cleanupRef.current) {
+            console.log('[Frame Handler] Cleaning up existing event listener');
+            cleanupRef.current();
+            cleanupRef.current = null;
+        }
 
-        // Always listen for capture frames
-        api.on('capture-frame', handleCaptureFrame);
+        console.log('[Frame Handler] Setting up capture-frame event listener');
 
-        // Clean up by removing the listener when component unmounts
-        return () => {
-            console.log('Cleaning up capture-frame event listener');
-            api.off('capture-frame', handleCaptureFrame);
+        // Set up new listener
+        const listener = (data: CaptureFrame | CaptureError) => handleCaptureFrame(data);
+        api.on('capture-frame', listener);
+
+        // Store cleanup function
+        cleanupRef.current = () => {
+            console.log('[Frame Handler] Cleaning up capture-frame event listener');
+            api?.off('capture-frame', listener);
+            // Clear pending analysis when unmounting
+            dispatch(clearPendingAnalysis());
         };
-    }, [handleCaptureFrame]);
+
+        // Clean up by removing the listener when component unmounts or deps change
+        return () => {
+            if (cleanupRef.current) {
+                cleanupRef.current();
+                cleanupRef.current = null;
+            }
+        };
+    }, [handleCaptureFrame, dispatch]); // Add dispatch to dependencies
 
     // Reset total captures when stopping or starting
     useEffect(() => {

@@ -3,11 +3,15 @@ import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { ThemeProvider } from 'styled-components';
 import { configureStore } from '@reduxjs/toolkit';
+import { enableMapSet } from 'immer';
 import { GameAnalysis } from './GameAnalysis';
 import aiReducer from '../../store/slices/aiSlice';
 import appReducer from '../../store/appSlice';
 import { theme } from '../../styles/theme';
 import type { AIResponse, GameMode } from '../../services/ai/types';
+
+// Enable MapSet support for Immer
+enableMapSet();
 
 const createMockStore = (initialState = {}) => {
     return configureStore({
@@ -33,6 +37,7 @@ const createMockStore = (initialState = {}) => {
                 responses: [],
                 currentMode: 'tactical' as GameMode,
                 isMuted: false,
+                pendingAnalysis: [],
                 ...initialState,
             },
         },

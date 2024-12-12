@@ -172,7 +172,7 @@ export const GameAnalysis: React.FC<GameAnalysisProps> = ({ screenshot }) => {
 
         if (!contentToShow?.aiResponse && !isLoading) {
             return (
-                <AnalysisContent isEmpty>
+                <AnalysisContent $isEmpty>
                     No AI analysis available
                 </AnalysisContent>
             );

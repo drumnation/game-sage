@@ -2,6 +2,11 @@ import type { AIAnalysisRequest } from '../../../window';
 import type { AIResponseWithSummary } from '@electron/types';
 import { AIServiceConfig, AIError, GameMode, AIMemoryEntry } from './types';
 
+// Add static debouncing for AI analysis
+const AI_ANALYSIS_DEBOUNCE_TIME = 1000; // 1 second
+let lastAnalysisTime = 0;
+let lastAnalysisId: string | null = null;
+
 export class AIService {
   private config: AIServiceConfig;
 
@@ -18,18 +23,36 @@ export class AIService {
     imageBase64: string,
     mode: GameMode,
     memory?: AIMemoryEntry[],
+    screenshotId?: string
   ): Promise<AIResponseWithSummary> {
     try {
+      // Check for duplicate analysis
+      const now = Date.now();
+      if (screenshotId && screenshotId === lastAnalysisId && now - lastAnalysisTime < AI_ANALYSIS_DEBOUNCE_TIME) {
+        console.log('[Renderer] Skipping duplicate AI analysis request:', {
+          timeSinceLastAnalysis: now - lastAnalysisTime,
+          screenshotId
+        });
+        throw new Error('Duplicate analysis request');
+      }
+
       console.log('[Renderer] Sending screenshot for analysis:', {
         mode,
         imageSize: imageBase64.length,
         gameInfo: this.config.gameInfo?.name,
-        memoryCount: memory?.length || 0
+        memoryCount: memory?.length || 0,
+        screenshotId
       });
 
       const api = window.electronAPI;
       if (!api) {
         throw new Error('Electron API not available');
+      }
+
+      // Update analysis tracking
+      lastAnalysisTime = now;
+      if (screenshotId) {
+        lastAnalysisId = screenshotId;
       }
 
       const response = await api.analyzeImage({
@@ -52,8 +75,20 @@ export class AIService {
       try {
         // The response is already a JSON object, no need to parse it
         if (typeof response.content === 'string') {
-          // If it's a string, try to parse it
-          const parsedResponse = JSON.parse(response.content);
+          // Strip markdown code block formatting if present
+          let contentToProcess = response.content;
+          if (contentToProcess.startsWith('```json')) {
+            contentToProcess = contentToProcess
+              .replace(/^```json\n/, '') // Remove opening ```json
+              .replace(/\n```$/, ''); // Remove closing ```
+          } else if (contentToProcess.startsWith('```')) {
+            contentToProcess = contentToProcess
+              .replace(/^```\n/, '') // Remove opening ```
+              .replace(/\n```$/, ''); // Remove closing ```
+          }
+
+          // Try to parse the cleaned content
+          const parsedResponse = JSON.parse(contentToProcess);
           return {
             content: parsedResponse.content,
             summary: parsedResponse.summary || this.extractSummary(parsedResponse.content),

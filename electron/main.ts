@@ -55,14 +55,13 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'",
-          "img-src 'self' data: blob:",
-          "script-src 'self' 'unsafe-inline'",
-          "style-src 'self' 'unsafe-inline'"
-        ].join('; '),
-        'X-Content-Type-Options': ['nosniff'],
-        'X-Frame-Options': ['SAMEORIGIN'],
-        'X-XSS-Protection': ['1; mode=block']
+          "default-src 'self';",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval';",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;",
+          "font-src 'self' https://fonts.gstatic.com;",
+          "img-src 'self' data: blob:;",
+          "connect-src 'self';"
+        ].join(' ')
       }
     });
   });
@@ -78,30 +77,10 @@ function createWindow() {
   }
 }
 
-async function setupScreenshotService() {
-  screenshotService = new ScreenshotService();
+function setupIpcHandlers() {
+  console.log('[Main] Setting up IPC handlers...');
 
-  console.log('Initializing screenshot service...');
-  await screenshotService.init();
-  console.log('Screenshot service initialized');
-
-  screenshotService.on('error', (error: Error) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('main-process-message', {
-        message: `Screenshot error: ${error.message}`,
-        timestamp: Date.now(),
-      });
-    }
-  });
-
-  // Forward capture frame events to renderer
-  screenshotService.on('capture-frame', (data) => {
-    if (mainWindow) {
-      console.log('[Frame Event] Forwarding frame to renderer');
-      mainWindow.webContents.send('capture-frame', data);
-    }
-  });
-
+  // Screenshot IPC handlers
   ipcMain.handle('start-capture', async () => {
     try {
       await screenshotService?.start();
@@ -124,28 +103,18 @@ async function setupScreenshotService() {
 
   ipcMain.handle('capture-now', async () => {
     try {
+      console.log('[Main] Handling capture-now request');
       const results = await screenshotService?.captureNow();
       if (!results || results.length === 0) {
+        console.log('[Main] No frames captured');
         return { success: false, error: 'No frames captured' } as APIResponse;
       }
 
-      // Send all frames to renderer, but only mark the first one as hotkey capture
-      results.forEach((result, index) => {
-        if (!('buffer' in result && 'metadata' in result)) {
-          return;
-        }
-
-        // Only mark the first frame as a hotkey capture
-        if (index === 0) {
-          result.metadata.isHotkeyCapture = true;
-        }
-
-        // Send frame event
-        sendFrameToRenderer(result);
-      });
-
+      // Return success without sending frames - ScreenshotService already emits them
+      console.log(`[Main] Capture successful, captured ${results.length} frames`);
       return { success: true } as APIResponse;
     } catch (error) {
+      console.error('[Main] Capture failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -188,60 +157,8 @@ async function setupScreenshotService() {
       return { success: false, error: errorMessage } as APIResponse;
     }
   });
-}
 
-function setupHotkeyService() {
-  hotkeyService = new HotkeyService();
-  setHotkeyService(hotkeyService);
-
-  // Register default hotkeys with debouncing
-  if (screenshotService) {
-    let lastCaptureTime = 0;
-    const DEBOUNCE_MS = 500; // Prevent captures within 500ms of each other
-
-    hotkeyService.registerHotkey('captureNow', 'CommandOrControl+Shift+C', async () => {
-      try {
-        if (!screenshotService || !getHotkeyModeState()) return;
-
-        const now = Date.now();
-        if (now - lastCaptureTime < DEBOUNCE_MS) {
-          console.log('Debouncing capture, too soon after last capture');
-          return;
-        }
-        lastCaptureTime = now;
-
-        // Only notify UI that hotkey was pressed if hotkey mode is enabled
-        mainWindow?.webContents.send('capture-hotkey');
-      } catch (error) {
-        console.error('Hotkey capture failed:', error);
-      }
-    });
-
-    hotkeyService.registerHotkey('toggleCapture', 'CommandOrControl+Shift+T', async () => {
-      try {
-        if (!screenshotService || !getHotkeyModeState()) return;
-
-        if (screenshotService.isCapturing()) {
-          await screenshotService.stop();
-        } else {
-          await screenshotService.start();
-        }
-      } catch (error) {
-        console.error('Hotkey toggle failed:', error);
-      }
-    });
-  }
-
-  // IPC handlers for hotkey management
-  ipcMain.handle('set-hotkey-mode', (_event, enabled: boolean) => {
-    setHotkeyModeState(enabled);
-    return { success: true };
-  });
-
-  ipcMain.handle('get-hotkey-mode', () => {
-    return { success: true, data: getHotkeyModeState() };
-  });
-
+  // Hotkey IPC handlers
   ipcMain.handle('update-hotkey', async (_event, action: keyof HotkeyConfig, accelerator: string) => {
     try {
       hotkeyService?.updateHotkey(action, accelerator);
@@ -253,45 +170,166 @@ function setupHotkeyService() {
   });
 
   ipcMain.handle('get-hotkeys', () => {
-    const hotkeys: Partial<HotkeyConfig> = {};
-    ['captureNow', 'toggleCapture'].forEach(action => {
-      const hotkey = hotkeyService?.getHotkey(action as keyof HotkeyConfig);
-      if (hotkey) {
-        hotkeys[action as keyof HotkeyConfig] = hotkey.accelerator;
-      }
-    });
-    return { success: true, data: hotkeys };
+    try {
+      const hotkeys: Partial<HotkeyConfig> = {};
+      ['captureNow', 'toggleCapture'].forEach(action => {
+        const hotkey = hotkeyService?.getHotkey(action as keyof HotkeyConfig);
+        if (hotkey) {
+          hotkeys[action as keyof HotkeyConfig] = hotkey.accelerator;
+        }
+      });
+      return { success: true, data: hotkeys };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return { success: false, error: errorMessage };
+    }
   });
+
+  ipcMain.handle('set-hotkey-mode', (_event, enabled: boolean) => {
+    try {
+      setHotkeyModeState(enabled);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('get-hotkey-mode', () => {
+    try {
+      return { success: true, data: getHotkeyModeState() };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  console.log('[Main] IPC handlers setup complete');
 }
 
-function createServices() {
-  aiService = new AIService();
+async function createServices() {
+  try {
+    console.log('[Main] Starting services initialization...');
 
-  return {
-    aiService,
-  };
+    // Initialize AI service first
+    console.log('[Main] Initializing AI service...');
+    aiService = new AIService();
+    console.log('[Main] AI service initialized successfully');
+
+    // Initialize screenshot service
+    console.log('[Main] Initializing screenshot service...');
+    screenshotService = new ScreenshotService();
+    await screenshotService.init();
+    console.log('[Main] Screenshot service initialized successfully');
+
+    // Set up screenshot service event handlers
+    screenshotService.on('error', (error: Error) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('main-process-message', {
+          message: `Screenshot error: ${error.message}`,
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    // Forward capture frame events to renderer
+    screenshotService.on('capture-frame', (data) => {
+      if (mainWindow) {
+        console.log('[Frame Event] Forwarding frame to renderer');
+        mainWindow.webContents.send('capture-frame', data);
+      }
+    });
+
+    // Initialize hotkey service
+    console.log('[Main] Initializing hotkey service...');
+    hotkeyService = new HotkeyService();
+    setHotkeyService(hotkeyService);
+
+    // Set up hotkey handlers
+    if (screenshotService) {
+      let lastCaptureTime = 0;
+      const DEBOUNCE_MS = 500;
+      let isCapturing = false;
+
+      hotkeyService.registerHotkey('captureNow', 'CommandOrControl+Shift+C', async () => {
+        try {
+          if (!screenshotService || !getHotkeyModeState()) return;
+
+          const now = Date.now();
+          if (now - lastCaptureTime < DEBOUNCE_MS || isCapturing) {
+            console.log('Debouncing hotkey, too soon or capture in progress');
+            return;
+          }
+
+          isCapturing = true;
+          lastCaptureTime = now;
+
+          const results = await screenshotService.captureNow();
+          if (Array.isArray(results)) {
+            results.forEach(result => {
+              if ('metadata' in result) {
+                result.metadata.isHotkeyCapture = true;
+                result.metadata.timestamp = now;
+              }
+              sendFrameToRenderer(result);
+            });
+          }
+        } catch (error) {
+          console.error('Hotkey capture failed:', error);
+        } finally {
+          isCapturing = false;
+        }
+      });
+    }
+
+    console.log('[Main] Hotkey service initialized successfully');
+
+    // Set up all IPC handlers after services are initialized
+    setupIpcHandlers();
+
+    console.log('[Main] All services initialized successfully');
+    return { aiService, screenshotService, hotkeyService };
+  } catch (error) {
+    console.error('[Main] Error initializing services:', error);
+    throw error;
+  }
 }
 
 app.whenReady().then(async () => {
-  createWindow();
-  await setupScreenshotService();
-  setupHotkeyService();
-  createServices();
+  try {
+    console.log('[Main] App ready, starting initialization...');
+    createWindow();
+    const services = await createServices();
+    console.log('[Main] Services initialized:', Object.keys(services));
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+    app.on('activate', function () {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  } catch (error) {
+    console.error('[Main] Failed to initialize application:', error);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {
+  console.log('[Main] All windows closed, cleaning up...');
   if (process.platform !== 'darwin') {
     app.quit();
   }
 
-  // Clean up hotkeys when app closes
-  hotkeyService?.unregisterAll();
+  // Clean up services
+  try {
+    hotkeyService?.unregisterAll();
+    screenshotService?.stop();
+    aiService = null;
+    screenshotService = null;
+    hotkeyService = null;
+    console.log('[Main] Services cleaned up successfully');
+  } catch (error) {
+    console.error('[Main] Error cleaning up services:', error);
+  }
 });
 
 app.on('before-quit', () => {
@@ -304,10 +342,16 @@ ipcMain.handle('ping', () => 'pong');
 // Function to handle sending frame to renderer
 function sendFrameToRenderer(result: CaptureResult) {
   if (mainWindow && 'buffer' in result && 'metadata' in result) {
+    // Add timestamp if not present
+    const metadata = {
+      ...result.metadata,
+      timestamp: result.metadata.timestamp || Date.now()
+    };
+
     console.log('[Frame Event] Sending frame to renderer');
     mainWindow.webContents.send('capture-frame', {
       imageData: result.buffer.toString('base64'),
-      metadata: result.metadata,
+      metadata,
     });
   }
 }

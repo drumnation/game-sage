@@ -10,7 +10,7 @@ export const GameAnalysisContainer = styled.div`
   overflow-y: auto;
 `;
 
-export const AnalysisContent = styled.div<{ isEmpty?: boolean }>`
+export const AnalysisContent = styled.div<{ $isEmpty?: boolean }>`
   position: relative;
   font-size: 1rem;
   line-height: 1.5;
@@ -21,7 +21,7 @@ export const AnalysisContent = styled.div<{ isEmpty?: boolean }>`
   min-height: 100px;
   width: 100%;
   
-  ${({ isEmpty, theme }: { isEmpty?: boolean; theme: DefaultTheme }) => isEmpty ? `
+  ${({ $isEmpty, theme }: { $isEmpty?: boolean; theme: DefaultTheme }) => $isEmpty ? `
     display: flex;
     align-items: center;
     justify-content: center;

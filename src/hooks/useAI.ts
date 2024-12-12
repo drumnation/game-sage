@@ -5,13 +5,6 @@ import { analyzeScreenshot, setMode } from '../store/slices/aiSlice';
 import { GameMode } from '../services/ai/types';
 import type { AIResponseWithSummary, AIMemoryEntry } from '@electron/types';
 
-interface AnalyzeParams {
-  imageBase64: string;
-  memory?: AIMemoryEntry[];
-  narrationMode?: boolean;
-  captureInterval?: number;
-}
-
 export const useAI = () => {
   const dispatch = useDispatch<AppDispatch>();
   const {
@@ -21,17 +14,31 @@ export const useAI = () => {
     error,
   } = useSelector((state: RootState) => state.ai);
 
-  const analyze = useCallback(async (params: AnalyzeParams): Promise<AIResponseWithSummary> => {
+  const analyze = useCallback(async (
+    imageBase64: string,
+    mode: GameMode,
+    memory?: AIMemoryEntry[],
+    screenshotId?: string
+  ): Promise<AIResponseWithSummary | null> => {
     try {
-      const result = await dispatch(analyzeScreenshot(params)).unwrap();
-      // Ensure the response has the required fields
+      const result = await dispatch(analyzeScreenshot({
+        imageBase64,
+        mode,
+        memory,
+        screenshotId
+      })).unwrap();
       return {
         content: result.content,
-        summary: result.summary || '', // Provide empty string as fallback
+        summary: result.summary || '',
         role: 'assistant'
       };
     } catch (error) {
-      console.error('Error in analyze:', error);
+      // If it's a duplicate request, just return null silently
+      if (error === 'Duplicate analysis request') {
+        console.log('[AI Hook] Skipping duplicate analysis');
+        return null;
+      }
+      console.error('[AI Hook] Error in analyze:', error);
       throw error;
     }
   }, [dispatch]);

@@ -5,7 +5,9 @@ import type { AIResponseWithSummary, AIMemoryEntry } from '@electron/types';
 
 interface AnalyzeParams {
     imageBase64: string;
+    mode: GameMode;
     memory?: AIMemoryEntry[];
+    screenshotId?: string;
 }
 
 const initialState: AIState = {
@@ -21,27 +23,34 @@ const initialState: AIState = {
     responses: [],
     currentMode: 'tactical' as GameMode,
     isMuted: false,
+    pendingAnalysis: [],
+};
+
+// Helper to generate a unique key for a screenshot analysis request
+const getAnalysisKey = (params: AnalyzeParams): string => {
+    return `${params.screenshotId}`;
 };
 
 export const analyzeScreenshot = createAsyncThunk<
     AIResponseWithSummary,
     AnalyzeParams,
-    { rejectValue: string }
+    { rejectValue: string; state: { ai: AIState } }
 >(
     'ai/analyzeScreenshot',
-    async ({ imageBase64, memory }, { getState, rejectWithValue }) => {
+    async ({ imageBase64, mode, memory, screenshotId }, { getState, rejectWithValue }) => {
         try {
-            const state = getState() as { ai: AIState };
+            const state = getState().ai;
             const aiService = new AIService({
-                apiKey: state.ai.settings.apiKey || '',
-                gameInfo: state.ai.settings.gameInfo,
-                customInstructions: state.ai.settings.customInstructions,
+                apiKey: state.settings.apiKey || '',
+                gameInfo: state.settings.gameInfo,
+                customInstructions: state.settings.customInstructions,
             });
 
             return await aiService.analyzeScreenshot(
                 imageBase64,
-                state.ai.settings.mode,
-                memory
+                mode,
+                memory,
+                screenshotId
             );
         } catch (error) {
             return rejectWithValue(error instanceof Error ? error.message : 'Failed to analyze screenshot');
@@ -76,21 +85,57 @@ const aiSlice = createSlice({
             const { index, instruction } = action.payload;
             state.settings.customInstructions[index] = instruction;
         },
+        clearPendingAnalysis: (state) => {
+            state.pendingAnalysis = [];
+        },
+        clearStaleAnalysis: (state) => {
+            const now = Date.now();
+            const staleTime = 5000; // 5 seconds
+            state.pendingAnalysis = state.pendingAnalysis.filter(key => {
+                const timestamp = parseInt(key.split('-')[0]);
+                return !isNaN(timestamp) && (now - timestamp) < staleTime;
+            });
+        },
     },
     extraReducers: (builder) => {
         builder
-            .addCase(analyzeScreenshot.pending, (state) => {
+            .addCase(analyzeScreenshot.pending, (state, action) => {
+                const analysisKey = getAnalysisKey(action.meta.arg);
+
+                // Only skip if we already have this exact analysis pending
+                if (state.pendingAnalysis.includes(analysisKey)) {
+                    console.log('[AI] Analysis already pending:', {
+                        screenshotId: action.meta.arg.screenshotId,
+                        mode: action.meta.arg.mode,
+                        pendingCount: state.pendingAnalysis.length,
+                        pendingKeys: state.pendingAnalysis,
+                        currentKey: analysisKey
+                    });
+                    return;
+                }
+
                 state.isAnalyzing = true;
                 state.error = null;
+                state.pendingAnalysis = [...state.pendingAnalysis, analysisKey];
             })
             .addCase(analyzeScreenshot.fulfilled, (state, action) => {
                 state.isAnalyzing = false;
                 state.currentAnalysis = action.payload;
                 state.responses = [action.payload, ...state.responses].slice(0, 100);
+
+                // Remove from pending array
+                const analysisKey = getAnalysisKey(action.meta.arg);
+                state.pendingAnalysis = state.pendingAnalysis.filter(key => key !== analysisKey);
             })
             .addCase(analyzeScreenshot.rejected, (state, action) => {
                 state.isAnalyzing = false;
                 state.error = action.payload || 'Failed to analyze screenshot';
+
+                // Remove from pending array on rejection too
+                if (action.meta) {
+                    const analysisKey = getAnalysisKey(action.meta.arg);
+                    state.pendingAnalysis = state.pendingAnalysis.filter(key => key !== analysisKey);
+                }
             });
     },
 });
@@ -102,6 +147,8 @@ export const {
     updateGameInfo,
     addCustomInstruction,
     removeCustomInstruction,
-    updateCustomInstruction
+    updateCustomInstruction,
+    clearPendingAnalysis,
+    clearStaleAnalysis
 } = aiSlice.actions;
 export default aiSlice.reducer; 

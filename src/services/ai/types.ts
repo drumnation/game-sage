@@ -45,6 +45,7 @@ export interface AIState {
     responses: AIResponseWithSummary[];
     currentMode: GameMode;
     isMuted: boolean;
+    pendingAnalysis: string[];
 }
 
 export interface AIMemoryEntry {
